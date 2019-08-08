@@ -17,22 +17,23 @@
 .. |ReadTheDocs| image:: https://readthedocs.org/projects/scikit-elm/badge/?version=latest
 .. _ReadTheDocs: https://scikit-elm.readthedocs.io/en/latest/?badge=latest
 
-project-template - A template for scikit-learn contributions
+Scikit-ELM
 ============================================================
 
 .. _scikit-learn: https://scikit-learn.org
+.. _dask: https://dask.org
+.. _plaidml: https://github.com/plaidml/plaidml/blob/master/docs/install.md#macos
 
-**project-template** is a template project for scikit-learn_ compatible
-extensions.
+**scikit-elm** is a scikit-learn_ compatible Extreme Learning Machine (ELM) regressor/classifier.
 
-It aids development of estimators that can be used in scikit-learn pipelines
-and (hyper)parameter search, while facilitating testing (including some API
-compliance), documentation, open source development, packaging, and continuous
-integration.
+It features very high degree of model flexibility: dynamically added classes,
+``partial_fit`` without performance penalties, wide data format compatibility,
+optimization and parameter selection without full re-training.
 
-.. _documentation: https://scikit-elm.readthedocs.io/en/latest/quick_start.html
+Big Data and out-of-core learning support through dask_-powered backend.
+GPU acceleration support with NVidia hardware, and on macOS through plaidml_.
 
-Refer to the documentation_ to modify the template for your own scikit-learn
-contribution.
+.. attention::
 
-*Thank you for cleanly contributing to the scikit-learn ecosystem!*
+    Toolbox is in active development, initial release soon.
+
