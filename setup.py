@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-"""A template for scikit-learn compatible packages."""
 
 import codecs
 import os
@@ -12,14 +11,14 @@ with open(ver_file) as f:
     exec(f.read())
 
 DISTNAME = 'scikit-elm'
-DESCRIPTION = 'A template for scikit-learn compatible packages.'
+DESCRIPTION = 'Extreme Learning Machine regressor/classifer compatible with scikit-learn'
 with codecs.open('README.rst', encoding='utf-8-sig') as f:
     LONG_DESCRIPTION = f.read()
-MAINTAINER = 'V. Birodkars, G. Lemaitre'
-MAINTAINER_EMAIL = 'vighneshbirodkar@nyu.edu, g.lemaitre58@gmail.com'
-URL = 'https://github.com/scikit-learn-contrib/project-template'
-LICENSE = 'new BSD'
-DOWNLOAD_URL = 'https://github.com/scikit-learn-contrib/project-template'
+MAINTAINER = 'Anton Akusok'
+MAINTAINER_EMAIL = 'akusok.a@gmail.com'
+URL = 'https://github.com/akusok/scikit-elm'
+LICENSE = 'MIT'
+DOWNLOAD_URL = 'https://github.com/akusok/scikit-elm'
 VERSION = __version__
 INSTALL_REQUIRES = ['numpy', 'scipy', 'scikit-learn']
 CLASSIFIERS = ['Intended Audience :: Science/Research',
@@ -32,7 +31,6 @@ CLASSIFIERS = ['Intended Audience :: Science/Research',
                'Operating System :: POSIX',
                'Operating System :: Unix',
                'Operating System :: MacOS',
-               'Programming Language :: Python :: 2.7',
                'Programming Language :: Python :: 3.5',
                'Programming Language :: Python :: 3.6',
                'Programming Language :: Python :: 3.7']

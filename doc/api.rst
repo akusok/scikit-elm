@@ -1,34 +1,32 @@
-####################
-project-template API
-####################
-
-This is an example on how to document the API of your own project.
+#############
+API Reference
+#############
 
 .. currentmodule:: skelm
 
-Estimator
+Regressor
 =========
 
 .. autosummary::
    :toctree: generated/
    :template: class.rst
 
-   TemplateEstimator
+   ELMRegressor
 
-Transformer
+Classifier
 ===========
 
 .. autosummary::
    :toctree: generated/
    :template: class.rst
 
-   TemplateTransformer
+   ELMClassifier
 
-Predictor
-=========
+Hidden Layer
+============
 
 .. autosummary::
    :toctree: generated/
    :template: class.rst
 
-    TemplateClassifier
+    HiddenLayer

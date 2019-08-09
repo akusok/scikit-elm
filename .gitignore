@@ -15,6 +15,7 @@ doc/datasets/generated/
 # Distribution / packaging
 
 .Python
+.ipynb_checkpoints
 env/
 build/
 develop-eggs/

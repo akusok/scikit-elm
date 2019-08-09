@@ -35,7 +35,7 @@ The use case is the following:
 
 In addition, scikit-learn provides a
 mixin_, i.e. :class:`sklearn.base.TransformerMixin`, which
-implement the combination of ``fit`` and ``transform`` called ``fit_transform``::
+implement the combination of ``fit`` and ``transform`` called ``fit_transform``:
 
 One can import the mixin class as::
 
@@ -48,7 +48,7 @@ inherits from both :class:`sklearn.base.BaseEstimator` and
 ``transform`` imposed by the :class:`sklearn.base.TransformerMixin`. The
 ``fit`` method is expected to have ``X`` and ``y`` as inputs. Note that
 ``transform`` takes only ``X`` as input and is expected to return the
-transformed version of ``X``::
+transformed version of ``X``:
 
     >>> class MyOwnTransformer(BaseEstimator, TransformerMixin):
     ...     def fit(self, X, y=None):
@@ -57,7 +57,7 @@ transformed version of ``X``::
     ...         return X
 
 We build a basic example to show that our :class:`MyOwnTransformer` is working
-within a scikit-learn ``pipeline``::
+within a scikit-learn ``pipeline``:
 
     >>> from sklearn.datasets import load_iris
     >>> from sklearn.pipeline import make_pipeline
@@ -97,7 +97,7 @@ Therefore, we create a regressor, :class:`MyOwnRegressor` which inherits from
 both :class:`sklearn.base.BaseEstimator` and
 :class:`sklearn.base.RegressorMixin`. The method ``fit`` gets ``X`` and ``y``
 as input and should return ``self``. It should implement the ``predict``
-function which should output the predictions of your regressor::
+function which should output the predictions of your regressor:
 
     >>> import numpy as np
     >>> class MyOwnRegressor(BaseEstimator, RegressorMixin):
@@ -106,7 +106,7 @@ function which should output the predictions of your regressor::
     ...     def predict(self, X):
     ...         return np.mean(X, axis=1)
 
-We illustrate that this regressor is working within a scikit-learn pipeline::
+We illustrate that this regressor is working within a scikit-learn pipeline:
 
     >>> from sklearn.datasets import load_diabetes
     >>> X, y = load_diabetes(return_X_y=True)
@@ -117,7 +117,7 @@ We illustrate that this regressor is working within a scikit-learn pipeline::
     array([...])
 
 Since we inherit from the :class:`sklearn.base.RegressorMixin`, we can call
-the ``score`` method which will return the :math:`R^2` score::
+the ``score`` method which will return the :math:`R^2` score:
 
     >>> pipe.score(X, y)  # doctest: +ELLIPSIS
     -3.9...
@@ -138,7 +138,7 @@ In addition, scikit-learn provides a mixin, i.e.
 :class:`sklearn.base.ClassifierMixin`, which implements the ``score`` method
 which computes the accuracy score of the predictions.
 
-One can import this mixin as::
+One can import this mixin as:
 
     >>> from sklearn.base import ClassifierMixin
 
@@ -147,7 +147,7 @@ from both :class:`slearn.base.BaseEstimator` and
 :class:`sklearn.base.ClassifierMixin`. The method ``fit`` gets ``X`` and ``y``
 as input and should return ``self``. It should implement the ``predict``
 function which should output the class inferred by the classifier.
-``predict_proba`` will output some probabilities instead::
+``predict_proba`` will output some probabilities instead:
 
     >>> class MyOwnClassifier(BaseEstimator, ClassifierMixin):
     ...     def fit(self, X, y):
@@ -160,14 +160,14 @@ function which should output the class inferred by the classifier.
     ...         pred = np.random.rand(X.shape[0], self.classes_.size)
     ...         return pred / np.sum(pred, axis=1)[:, np.newaxis]
 
-We illustrate that this regressor is working within a scikit-learn pipeline::
+We illustrate that this regressor is working within a scikit-learn pipeline:
 
     >>> X, y = load_iris(return_X_y=True)
     >>> pipe = make_pipeline(MyOwnTransformer(), MyOwnClassifier())
     >>> pipe.fit(X, y)  # doctest: +ELLIPSIS
     Pipeline(...)
 
-Then, you can call ``predict`` and ``predict_proba``::
+Then, you can call ``predict`` and ``predict_proba``:
 
     >>> pipe.predict(X)  # doctest: +ELLIPSIS
     array([...])
@@ -175,7 +175,7 @@ Then, you can call ``predict`` and ``predict_proba``::
     array([...])
 
 Since our classifier inherits from :class:`sklearn.base.ClassifierMixin`, we
-can compute the accuracy by calling the ``score`` method::
+can compute the accuracy by calling the ``score`` method:
 
     >>> pipe.score(X, y)  # doctest: +ELLIPSIS
     0...

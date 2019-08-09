@@ -1,4 +1,4 @@
-name: project-template
+name: scikit-elm
 dependencies:
   - numpy
   - scipy

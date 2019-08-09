@@ -12,8 +12,9 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
+import sys
+sys.path.insert(0, os.path.abspath('..'))
 
 import sphinx_gallery
 import sphinx_rtd_theme
@@ -37,6 +38,7 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
+    'sphinx.ext.todo',
     'numpydoc',
     'sphinx_gallery.gen_gallery',
 ]
@@ -53,7 +55,7 @@ if LooseVersion(sphinx.__version__) < LooseVersion('1.4'):
 else:
     extensions.append('sphinx.ext.imgmath')
 
-autodoc_default_flags = ['members', 'inherited-members']
+autodoc_default_options = {'members': True, 'inherited-members': True}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -68,14 +70,14 @@ source_suffix = '.rst'
 #source_encoding = 'utf-8-sig'
 
 # Generate the plots for the gallery
-plot_gallery = True
+plot_gallery = 'True'
 
 # The master toctree document.
 master_doc = 'index'
 
 # General information about the project.
 project = u'scikit-elm'
-copyright = u'2016, Vighnesh Birodkar'
+copyright = u'2019, Anton Akusok'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -99,7 +101,7 @@ release = __version__
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build', '_templates']
+exclude_patterns = ['_build', '_templates', '.ipynb_checkpoints']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -138,7 +140,7 @@ html_theme = 'sphinx_rtd_theme'
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-#html_theme_options = {}
+html_theme_options = {'collapsiblesidebar': True}
 
 # Add any paths that contain custom themes here, relative to this directory.
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
@@ -231,8 +233,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'project-template.tex', u'project-template Documentation',
-   u'Vighnesh Birodkar', 'manual'),
+  ('index', 'project-template.tex', u'project-template Documentation', u'Anton Akusok', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -260,10 +261,7 @@ latex_documents = [
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [
-    ('index', 'project-template', u'project-template Documentation',
-     [u'Vighnesh Birodkar'], 1)
-]
+man_pages = [('index', 'project-template', u'project-template Documentation', [u'Anton Akusok'], 1)]
 
 # If true, show URL addresses after external links.
 #man_show_urls = False
@@ -276,7 +274,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'project-template', u'project-template Documentation',
-   u'Vighnesh Birodkar', 'project-template', 'One line description of project.',
+   u'Anton Akusok', 'project-template', 'One line description of project.',
    'Miscellaneous'),
 ]
 
@@ -296,8 +294,7 @@ texinfo_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 # intersphinx configuration
 intersphinx_mapping = {
-    'python': ('https://docs.python.org/{.major}'.format(
-        sys.version_info), None),
+    'python': ('https://docs.python.org/{.major}'.format(sys.version_info), None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
     'scipy': ('https://docs.scipy.org/doc/scipy/reference', None),
     'matplotlib': ('https://matplotlib.org/', None),
@@ -308,8 +305,7 @@ intersphinx_mapping = {
 sphinx_gallery_conf = {
     'doc_module': 'skelm',
     'backreferences_dir': os.path.join('generated'),
-    'reference_url': {
-        'skelm': None}
+    'reference_url': {'skelm': None}
 }
 
 def setup(app):
