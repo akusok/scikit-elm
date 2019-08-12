@@ -3,17 +3,16 @@
 |Travis|_ |AppVeyor|_ |Codecov|_ |ReadTheDocs|_
 
 .. |Travis| image:: https://travis-ci.org/akusok/scikit-elm.svg?branch=master
-    :target: https://travis-ci.org/akusok/scikit-elm
+.. _Travis: https://travis-ci.org/akusok/scikit-elm
 
 .. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/coy2qqaqr1rnnt5y/branch/master?svg=true
 .. _AppVeyor: https://ci.appveyor.com/project/glemaitre/project-template
 
 .. |Codecov| image:: https://codecov.io/gh/akusok/scikit-elm/branch/master/graph/badge.svg
-   :target: https://codecov.io/gh/akusok/scikit-elm
+.. _Codecov: https://codecov.io/gh/akusok/scikit-elm
 
 .. |ReadTheDocs| image:: https://readthedocs.org/projects/scikit-elm/badge/?version=latest
-    :target: https://scikit-elm.readthedocs.io/en/latest/?badge=latest
-    :alt: Documentation Status
+.. _ReadTheDocs: https://scikit-elm.readthedocs.io/en/latest/?badge=latest
 
 Scikit-ELM
 ============================================================
