@@ -15,7 +15,7 @@ from sklearn.preprocessing import LabelBinarizer, MultiLabelBinarizer
 from sklearn.exceptions import DataConversionWarning, NotFittedError
 
 from .hidden_layer import HiddenLayer
-from .solvers import IterativeSolver
+from .solvers import BatchCholeskySolver
 
 
 class ELMRegressor(BaseEstimator, RegressorMixin):
@@ -33,7 +33,7 @@ class ELMRegressor(BaseEstimator, RegressorMixin):
         Regularization improves model stability and reduces over-fitting at the cost of some learning
         capacity. The same value is used for all targets in multi-variate regression. 
         
-        The optimal regularization strength is suggested to select from a large range of logarifmically
+        The optimal regularization strength is suggested to select from a large range of logarithmically
         distributed values, e.g. :math:`[10^{-5}, 10^{-4}, 10^{-3}, ..., 10^4, 10^5]`. A small default 
         regularization value of :math:`10^{-7}` should always be present to counter numerical instabilities 
         in the solution; it does not affect overall model performance.
@@ -156,9 +156,18 @@ class ELMRegressor(BaseEstimator, RegressorMixin):
         self.random_state = random_state
 
     def _init_model(self):
-        self.hidden_layers_ = []
-        self.solver_ = IterativeSolver(alpha=self.alpha)
-        #todo: finish that
+        """Init an empty model, creating objects for hidden layers and solver.
+
+        Also validates inputs for several hidden layers.
+        """
+
+        self.solver_ = BatchCholeskySolver(alpha=self.alpha)
+
+        # only one type of neurons
+        if not hasattr(self.n_neurons, '__iter__'):
+            hl = HiddenLayer(n_neurons=self.n_neurons, density=self.density, ufunc=self.ufunc,
+                             pairwise_metric=self.pairwise_metric, random_state=self.random_state)
+            self.hidden_layers_ = (hl, )
 
     def fit(self, X, y=None):
         """Reset model and fit on the given data.
@@ -193,39 +202,28 @@ class ELMRegressor(BaseEstimator, RegressorMixin):
         if self.bsize_ is None:
             self.bsize_ = n_samples if n_samples < 10_000 else 2000
 
-        #todo: fit all hidden layers
+        self._init_model()
 
-        #todo: batch transform through hidden layers, merge features together, and feed to solver
-
-        '''
-        for hl in hidden_layers:
-            hl.fit(X, y)
-            
-        self.solver_.init()
-            
         for b_start in range(0, n_samples, self.bsize_):
-            b_X = X[b_start:b_start + self.bsize_]
-            data = [hl.transform(b_X) for hl in hidden_layers]
+            b_end = min(b_start + self.bsize_, n_samples)
+            b_X = X[b_start:b_end]
+            b_y = y[b_start:b_end]
+
+            if b_start == 0:
+                for hl in self.hidden_layers_:
+                    hl.fit(b_X)
+
+            b_H = [hl.transform(b_X) for hl in self.hidden_layers_]
             if self.include_original_features:
-                data.append(b_X)
+                b_H = [b_X] + b_H  # append in front of the list
+            b_H = np.hstack(b_H)
 
-            b_H = np.hstack(data)
-            self.solver_.partial_fit(b_H, b_Y, skip_solution=True)
-            
-        self.solver_.partial_fit(None, None, skip_solution=False)            
-        '''
+            self.solver_.partial_fit(b_H, b_y, compute_output_weights=False)
 
-        HiddenLayer.fit(self, X)
-        H = HiddenLayer.transform(self, X)
-        self.solver_ = Ridge(alpha=self.alpha, random_state=self.random_state)
-        self.solver_.fit(H, y)
-        
-        
-        
-        
+        self.solver_.partial_fit(None, None, compute_output_weights=True)
         self.is_fitted_ = True
         return self
-        
+
     def predict(self, X):
         """Predict real valued outputs for new inputs X.
         
@@ -249,8 +247,12 @@ class ELMRegressor(BaseEstimator, RegressorMixin):
         #todo: add bunch of files support
         X = check_array(X, accept_sparse=True)
         check_is_fitted(self, "is_fitted_")
-         
-        H = HiddenLayer.transform(self, X)
+
+        H = [hl.transform(X) for hl in self.hidden_layers_]
+        if self.include_original_features:
+            H = [X] + H
+        H = np.hstack(H)
+
         return self.solver_.predict(H)
 
 
@@ -316,7 +318,7 @@ class ELMClassifier(HiddenLayer, ClassifierMixin):
             if self.solver.lower() == 'ridge':
                 self.solver_ = Ridge(alpha=self.alpha, random_state=self.random_state)
             elif self.solver.lower() in {'iterative', 'ls', 'builtin', 'default'}:
-                self.solver_ = IterativeSolver(alpha=self.alpha)
+                self.solver_ = BatchCholeskySolver(alpha=self.alpha)
             elif hasattr(self.solver, 'fit'):
                 self.solver_ = self.solver
             else:
@@ -325,7 +327,7 @@ class ELMClassifier(HiddenLayer, ClassifierMixin):
         return X, y
 
     def _update_classes(self, y):
-        if not isinstance(self.solver_, IterativeSolver):
+        if not isinstance(self.solver_, BatchCholeskySolver):
             raise ValueError("Only iterative solver supports dynamic class update")
 
         old_classes = self.label_binarizer_.classes_
@@ -356,15 +358,12 @@ class ELMClassifier(HiddenLayer, ClassifierMixin):
         if hasattr(self.solver_, 'coef_'):
             del self.solver_.coef_, self.solver_.intercept_
 
-    def partial_fit(self, X, y=None, classes=None, update_classes=False, skip_solution=False):
+    def partial_fit(self, X, y=None, classes=None, update_classes=False, compute_output_weights=True):
         """Update classifier with new data.
 
         :param classes: ignored
         :param update_classes: Includes new classes from 'y' into the model;
                                assumes they are set to 0 in all previous targets.
-        :param skip_solution: Skips computing the new (coef_, intercept_) solution and erases the existing one.
-                              Speed up computations by using this in intermediate partial_fits; then finish by
-                              the last partial_fit with skip_soluton=False. Only for iterative solver.
         """
         
         #todo: make nice code for the initial fit vs. continuous partial_fit
@@ -392,7 +391,7 @@ class ELMClassifier(HiddenLayer, ClassifierMixin):
         H = HiddenLayer.transform(self, X)
 
         if self.solver.lower() == "iterative":
-            self.solver_.partial_fit(H, Y_numeric, skip_solution=skip_solution)
+            self.solver_.partial_fit(H, Y_numeric, compute_output_weights=compute_output_weights)
         else:
             self.solver_.partial_fit(H, Y_numeric)
         return self

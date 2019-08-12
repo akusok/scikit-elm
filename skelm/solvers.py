@@ -8,7 +8,7 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.utils import check_X_y, check_array
 
 
-class IterativeSolver(BaseEstimator, RegressorMixin):
+class BatchCholeskySolver(BaseEstimator, RegressorMixin):
     
     def __init__(self, alpha=1e-7):
         self.alpha = alpha
@@ -33,20 +33,25 @@ class IterativeSolver(BaseEstimator, RegressorMixin):
         if hasattr(self, "XtX_"):
             del self.XtX_, self.XtY_, self.coef_, self.intercept_
             
-        self.partial_fit(X, y, skip_solution=False)
+        self.partial_fit(X, y, compute_output_weights=True)
         return self
     
-    def partial_fit(self, X, y, skip_solution=False):
+    def partial_fit(self, X, y, compute_output_weights=True):
         """Update model with a new batch of data.
         
         Final solution can be temporary turned off for faster processing.
 
-        :param skip_solution: Skips computing the new (coef_, intercept_) solution and erases the existing one.
-                              Speed up computations by using this in intermediate partial_fits; then finish by
-                              the last partial_fit with skip_soluton=False.
+        Parameters
+        ----------
+        compute_output_weights : boolean, optional, default True
+            Whether to compute new output weights (coef_, intercept_). Disable this in intermediate `partial_fit`
+            steps to run computations faster, then enable in the last call to compute the new solution.
+
+            .. Note::
+                Solution can be updated without extra data by setting `X=None` and `y=None`.
         """
         # solution only
-        if X is None and y is None and skip_solution == True:
+        if X is None and y is None and compute_output_weights:
             B = sp.linalg.solve(self.XtX_, self.XtY_, assume_a='pos', overwrite_a=False, overwrite_b=False)
             self.coef_ = B[1:]
             self.intercept_ = B[0]
@@ -79,7 +84,7 @@ class IterativeSolver(BaseEstimator, RegressorMixin):
         self.XtY_[1:] += X.T @ y
         
         # solve
-        if skip_solution:
+        if not compute_output_weights:
             if hasattr(self, 'coef_'):
                 del self.coef_, self.intercept_
         else:

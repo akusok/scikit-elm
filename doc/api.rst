@@ -6,7 +6,6 @@ API Reference
 
 Regressor
 =========
-
 .. autosummary::
    :toctree: generated/
    :template: class.rst
@@ -14,8 +13,7 @@ Regressor
    ELMRegressor
 
 Classifier
-===========
-
+==========
 .. autosummary::
    :toctree: generated/
    :template: class.rst
@@ -24,9 +22,15 @@ Classifier
 
 Hidden Layer
 ============
-
 .. autosummary::
    :toctree: generated/
    :template: class.rst
 
     HiddenLayer
+
+Solver
+======
+.. autosummary::
+   :toctree: generated/
+
+    BatchCholeskySolver

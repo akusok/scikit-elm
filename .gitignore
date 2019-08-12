@@ -16,6 +16,7 @@ doc/datasets/generated/
 
 .Python
 .ipynb_checkpoints
+.idea
 env/
 build/
 develop-eggs/

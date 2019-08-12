@@ -1,4 +1,4 @@
-import unittest
+import pytest
 import numpy as np
 import warnings
 warnings.filterwarnings("ignore", message="DataDimensionalityWarning")
@@ -7,6 +7,42 @@ from sklearn.datasets import load_iris, make_multilabel_classification, load_dia
 
 from skelm import ELMRegressor, ELMClassifier
 
+@pytest.fixture
+def data_class():
+    return load_iris(return_X_y=True)
+
+@pytest.fixture
+def data_ml():
+    return make_multilabel_classification(return_X_y=True)
+
+@pytest.fixture
+def data_reg():
+    return load_diabetes(return_X_y=True)
+
+
+def test_SineWave_Solves():
+    """A highly non-linear regression problem, with added strong noise.
+    """
+    X = np.linspace(-1, 1, num=1000)[:, None]
+    Y = np.sin(16 * X) * X + 0.2*np.random.randn(1000)[:, None]
+
+    elm = ELMRegressor(random_state=0)
+    elm.fit(X, Y)
+    Yt = elm.predict(X)
+
+    MSE = np.mean((Y - Yt) ** 2)
+    assert MSE < 0.3
+
+
+
+
+
+
+
+
+
+
+'''
 
 class TestAcceptance(unittest.TestCase):
     
@@ -14,20 +50,6 @@ class TestAcceptance(unittest.TestCase):
         # suppress annoying warning for random projections into a higher-dimensional space
         warnings.filterwarnings("ignore", message="The number of components is higher than the number of features")
         warnings.filterwarnings("ignore", message="A column-vector y was passed when a 1d array was expected.")
-
-    def test_SineWave_Solves(self):
-        """A highly non-linear regression problem, with added strong noise.
-        """
-        X = np.linspace(-1, 1, num=1000)[:, None]
-        Y = np.sin(16 * X) * X + 0.2*np.random.randn(1000)[:, None]
-
-        elm = ELMRegressor(random_state=0)
-        elm.fit(X, Y)
-        Yt = elm.predict(X)
-
-        MSE = np.mean((Y - Yt) ** 2)
-        
-        self.assertLess(MSE, 0.3)
 
     def test_Xor_OneNeuron_Solved(self):
         """ELM should be able to solve XOR problem.
@@ -78,3 +100,5 @@ class TestAcceptance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+'''
