@@ -200,7 +200,7 @@ class ELMRegressor(BaseEstimator, RegressorMixin):
         # set batch size, default is bsize=2000 or all-at-once with less than 10_000 samples
         self.bsize_ = self.batch_size
         if self.bsize_ is None:
-            self.bsize_ = n_samples if n_samples < 10_000 else 2000
+            self.bsize_ = n_samples if n_samples < 10*1000 else 2000
 
         self._init_model()
 
