@@ -35,6 +35,7 @@ install:
       else
           conda install --yes numpy==$NUMPY_VERSION scipy==$SCIPY_VERSION scikit-learn==$SKLEARN_VERSION cython nose pytest pytest-cov
       fi
+  - conda install --yes pandas  # Pandas support - not in requirements, tests run if module is installed
   - pip install codecov
   - pip install .
 

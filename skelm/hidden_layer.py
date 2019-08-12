@@ -10,9 +10,11 @@ from sklearn.metrics import pairwise_distances
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 
+from .utils import _dense
+
 # suppress annoying warning of random projection into a higher-dimensional space
 import warnings
-warnings.filterwarnings("ignore", message="The number of components is higher than the number of features")
+warnings.filterwarnings("ignore", message="DataDimensionalityWarning")
 
 
 def auto_neuron_count(n, d):
@@ -38,6 +40,7 @@ ufuncs = {"tanh": np.tanh,
 
 
 class HiddenLayer(BaseEstimator, TransformerMixin):
+    #todo: use random state properly
     
     def __init__(self, n_neurons=None, density=None, ufunc="tanh", pairwise_metric=None,
                  include_original_features=False, random_state=None):
@@ -79,7 +82,11 @@ class HiddenLayer(BaseEstimator, TransformerMixin):
             raise ValueError("X has %d features per sample; expecting %d" % (X.shape[1], n_features))
 
         if self.hidden_layer_ is HiddenLayerType.PAIRWISE:
-            H = pairwise_distances(X, self.centroids_, metric=self.pairwise_metric)
+            try:
+                H = pairwise_distances(X, self.centroids_, metric=self.pairwise_metric)
+            except TypeError:
+                # scipy distances that don't support sparse matrices
+                H = pairwise_distances(_dense(X), _dense(self.centroids_), metric=self.pairwise_metric)
         else:
             H = self.ufunc_(self.projection_.transform(X))
 
