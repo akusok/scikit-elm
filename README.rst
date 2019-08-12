@@ -5,7 +5,7 @@
 .. |Travis| image:: https://travis-ci.org/akusok/scikit-elm.svg?branch=master
 .. _Travis: https://travis-ci.org/akusok/scikit-elm
 
-.. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/coy2qqaqr1rnnt5y/branch/master?svg=true
+.. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/957kf3r6eqcnbspp?svg=true
 .. _AppVeyor: https://ci.appveyor.com/project/glemaitre/project-template
 
 .. |Codecov| image:: https://codecov.io/gh/akusok/scikit-elm/branch/master/graph/badge.svg
