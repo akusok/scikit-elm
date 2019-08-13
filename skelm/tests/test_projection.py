@@ -101,7 +101,7 @@ def test_Ufunc_NumpyUfunc_Works(data, elm_model):
 @pytest.mark.parametrize("data,elm_model", params)
 def test_PairwiseKernel_Works(data, elm_model):
     elm = elm_model(pairwise_metric="euclidean").fit(*data)
-    assert hasattr(elm.hidden_layers_[0], "centroids_")
+    assert hasattr(elm.hidden_layers_[0].projection_, "pairwise_metric")
 
 
 @pytest.mark.parametrize("data,elm_model", params)

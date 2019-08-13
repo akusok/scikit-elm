@@ -6,11 +6,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils import check_random_state
 from sklearn.utils.validation import check_array, check_is_fitted
 
-from sklearn.metrics import pairwise_distances
-from sklearn.preprocessing import QuantileTransformer
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
-
-from .utils import _dense
+from .utils import PairwiseRandomProjection
 
 # suppress annoying warning of random projection into a higher-dimensional space
 import warnings
@@ -40,15 +37,12 @@ ufuncs = {"tanh": np.tanh,
 
 
 class HiddenLayer(BaseEstimator, TransformerMixin):
-    #todo: use random state properly
-    
-    def __init__(self, n_neurons=None, density=None, ufunc="tanh", pairwise_metric=None,
-                 include_original_features=False, random_state=None):
+
+    def __init__(self, n_neurons=None, density=None, ufunc="tanh", pairwise_metric=None, random_state=None):
         self.n_neurons = n_neurons
         self.density = density
         self.ufunc = ufunc
         self.pairwise_metric = pairwise_metric
-        self.include_original_features = include_original_features
         self.random_state = random_state
         
     def _fit_random_projection(self, X):
@@ -58,46 +52,20 @@ class HiddenLayer(BaseEstimator, TransformerMixin):
             
     def _fit_sparse_projection(self, X):
         self.hidden_layer_ = HiddenLayerType.SPARSE
-        self.projection_ = SparseRandomProjection(
-            n_components=self.n_neurons_, density=self.density, dense_output=True, random_state=self.random_state_)
+        self.projection_ = SparseRandomProjection(n_components=self.n_neurons_, density=self.density,
+                                                  dense_output=True, random_state=self.random_state_)
         self.projection_.fit(X)
 
     def _fit_pairwise_projection(self, X):
-        # use quantile transformer to fit random centroids to data distribution
         self.hidden_layer_ = HiddenLayerType.PAIRWISE
-        transformer = QuantileTransformer(n_quantiles=min(100, X.shape[0]),
-                                          ignore_implicit_zeros=True)
-        transformer.fit(X)
-        random_centroids = np.random.rand(self.n_neurons_, X.shape[1])
-        self.centroids_ = transformer.inverse_transform(random_centroids)
-
-    def _project(self, X):
-        # validate X dimension
-        if self.hidden_layer_ is HiddenLayerType.PAIRWISE:
-            n_features = self.centroids_.shape[1]
-        else:
-            n_features = self.projection_.components_.shape[1]
-
-        if X.shape[1] != n_features:
-            raise ValueError("X has %d features per sample; expecting %d" % (X.shape[1], n_features))
-
-        if self.hidden_layer_ is HiddenLayerType.PAIRWISE:
-            try:
-                H = pairwise_distances(X, self.centroids_, metric=self.pairwise_metric)
-            except TypeError:
-                # scipy distances that don't support sparse matrices
-                H = pairwise_distances(_dense(X), _dense(self.centroids_), metric=self.pairwise_metric)
-        else:
-            H = self.ufunc_(self.projection_.transform(X))
-
-        if self.include_original_features:
-            H = np.hstack((X if isinstance(X, np.ndarray) else np.array(X.todense()), H))
-
-        return H
+        self.projection_ = PairwiseRandomProjection(n_components=self.n_neurons_,
+                                                    pairwise_metric=self.pairwise_metric,
+                                                    random_state=self.random_state_)
+        self.projection_.fit(X)
     
     def fit(self, X, y=None):
         # basic checks
-        X = check_array(X, accept_sparse=['csr', 'csc', 'coo'])
+        X = check_array(X, accept_sparse=True)
 
         # handle random state
         self.random_state_ = check_random_state(self.random_state)
@@ -120,10 +88,19 @@ class HiddenLayer(BaseEstimator, TransformerMixin):
             self.ufunc_ = self.ufunc
         else:
             raise ValueError("Ufunc transformation function not understood: ", self.ufunc)
-        
+
+        self.is_fitted_ = True
         return self
     
     def transform(self, X):
-        check_is_fitted(self, "hidden_layer_")
-        X = check_array(X, accept_sparse=['csr', 'csc', 'coo'])
-        return self._project(X)
+        check_is_fitted(self, "is_fitted_")
+
+        X = check_array(X, accept_sparse=True)
+        n_features = self.projection_.components_.shape[1]
+        if X.shape[1] != n_features:
+            raise ValueError("X has %d features per sample; expecting %d" % (X.shape[1], n_features))
+
+        if self.hidden_layer_ == HiddenLayerType.PAIRWISE:
+            return self.projection_.transform(X)  # pairwise projection ignores ufunc
+
+        return self.ufunc_(self.projection_.transform(X))

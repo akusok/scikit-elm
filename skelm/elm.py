@@ -258,18 +258,18 @@ class ELMRegressor(_BaseELM, RegressorMixin):
     Combining ten sigmoid and twenty RBF neurons in one model:
 
     >>> model = ELMRegressor(n_neurons=(10, 20),
-    >>>                      ufunc=('sigm', None),
-    >>>                      density=(None, None),
-    >>>                      pairwise_metric=(None, 'euclidean'))
+    ...                      ufunc=('sigm', None),
+    ...                      density=(None, None),
+    ...                      pairwise_metric=(None, 'euclidean'))
 
     Default values in multi-neuron ELM are automatically expanded to a list
 
     >>>  model = ELMRegressor(n_neurons=(10, 20),
-    >>>                       ufunc=('sigm', None),
-    >>>                       pairwise_metric=(None, 'euclidean'))
+    ...                       ufunc=('sigm', None),
+    ...                       pairwise_metric=(None, 'euclidean'))
 
     >>>  model = ELMRegressor(n_neurons=(30, 30),
-    >>>                       pairwise_metric=('cityblock', 'cosine'))
+    ...                       pairwise_metric=('cityblock', 'cosine'))
     """
     pass
 
