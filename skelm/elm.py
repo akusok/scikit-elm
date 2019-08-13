@@ -33,19 +33,25 @@ class _BaseELM(BaseEstimator):
         self.pairwise_metric = pairwise_metric
         self.random_state = random_state
 
-    def _init_model(self):
+    def _init_model(self, X):
         """Init an empty model, creating objects for hidden layers and solver.
 
         Also validates inputs for several hidden layers.
         """
-
+        self.n_features_ = X.shape[1]
         self.solver_ = BatchCholeskySolver(alpha=self.alpha)
 
         # only one type of neurons
         if not hasattr(self.n_neurons, '__iter__'):
             hl = HiddenLayer(n_neurons=self.n_neurons, density=self.density, ufunc=self.ufunc,
                              pairwise_metric=self.pairwise_metric, random_state=self.random_state)
+            hl.fit(X)
             self.hidden_layers_ = (hl, )
+
+        #todo: support several hidden layers, with unit tests
+
+    def _reset(self):
+        [delattr(self, attr) for attr in ('n_features_', 'solver_', 'hidden_layers_', 'is_fitted_') if hasattr(self, attr)]
 
     @property
     def coef_(self):
@@ -54,6 +60,80 @@ class _BaseELM(BaseEstimator):
     @property
     def intercept_(self):
         return self.solver_.intercept_
+
+    def partial_fit(self, X, y=None, compute_output_weights=True):
+        """Update model with a new batch of data.
+
+        Output weight computation can be temporary turned off for faster processing. This will mark model as
+        not fit. Enable `compute_output_weights` in the final call to `partial_fit`.
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape=[n_samples, n_features]
+            Training input samples
+
+        y : array-like, shape=[n_samples, n_targets]
+            Training targets
+
+        compute_output_weights : boolean, optional, default True
+            Whether to compute new output weights (coef_, intercept_). Disable this in intermediate `partial_fit`
+            steps to run computations faster, then enable in the last call to compute the new solution.
+
+            .. Note::
+                Solution can be updated without extra data by setting `X=None` and `y=None`.
+        """
+        # compute output weights only
+        if X is None and y is None and compute_output_weights:
+            self.solver_.partial_fit(None, None, compute_output_weights=True)
+            self.is_fitted_ = True
+            return self
+
+        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
+
+        if len(y.shape) > 1 and y.shape[1] == 1:
+            msg = ("A column-vector y was passed when a 1d array was expected. "
+                   "Please change the shape of y to (n_samples, ), for example using ravel().")
+            warnings.warn(msg, DataConversionWarning)
+
+        n_samples, n_features = X.shape
+        if hasattr(self, 'n_features_') and self.n_features_ != n_features:
+            raise ValueError('Shape of input is different from what was seen in `fit`')
+
+        # init model if not fit yet
+        if not hasattr(self, 'hidden_layers_'):
+            self._init_model(X)
+
+        # set batch size, default is bsize=2000 or all-at-once with less than 10_000 samples
+        self.bsize_ = self.batch_size
+        if self.bsize_ is None:
+            self.bsize_ = n_samples if n_samples < 10 * 1000 else 2000
+
+        # special case of one-shot processing
+        if self.bsize_ >= n_samples:
+            H = [hl.transform(X) for hl in self.hidden_layers_]
+            H = np.hstack(H if not self.include_original_features else [_dense(X)] + H)
+            self.solver_.partial_fit(H, y, compute_output_weights=False)
+
+        else:  # batch processing
+            for b_start in range(0, n_samples, self.bsize_):
+                b_end = min(b_start + self.bsize_, n_samples)
+                b_X = X[b_start:b_end]
+                b_y = y[b_start:b_end]
+
+                b_H = [hl.transform(b_X) for hl in self.hidden_layers_]
+                b_H = np.hstack(b_H if not self.include_original_features else [_dense(b_X)] + b_H)
+                self.solver_.partial_fit(b_H, b_y, compute_output_weights=False)
+
+        # output weights if needed
+        if compute_output_weights:
+            self.solver_.partial_fit(None, None, compute_output_weights=True)
+            self.is_fitted_ = True
+
+        # mark as needing a solution
+        elif hasattr(self, 'is_fitted_'):
+            del self.is_fitted_
+
+        return self
 
     def fit(self, X, y=None):
         """Reset model and fit on the given data.
@@ -74,44 +154,8 @@ class _BaseELM(BaseEstimator):
         
         #todo: add X as bunch of files support
         
-        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
-        
-        if len(y.shape) > 1 and y.shape[1] == 1:
-            msg = ("A column-vector y was passed when a 1d array was expected. "
-                   "Please change the shape of y to (n_samples, ), for example using ravel().")
-            warnings.warn(msg, DataConversionWarning)
-
-        n_samples, n_features = X.shape
-
-        # set batch size, default is bsize=2000 or all-at-once with less than 10_000 samples
-        self.bsize_ = self.batch_size
-        if self.bsize_ is None:
-            self.bsize_ = n_samples if n_samples < 10*1000 else 2000
-
-        self._init_model()
-
-        # special case of one-shot processing
-        if self.bsize_ >= n_samples:
-            H = [hl.fit_transform(X) for hl in self.hidden_layers_]
-            H = np.hstack(H if not self.include_original_features else [_dense(X)] + H)
-            self.solver_.fit(H, y)
-
-        else:  # batch processing
-            for b_start in range(0, n_samples, self.bsize_):
-                b_end = min(b_start + self.bsize_, n_samples)
-                b_X = X[b_start:b_end]
-                b_y = y[b_start:b_end]
-
-                if b_start == 0:
-                    [hl.fit(b_X) for hl in self.hidden_layers_]
-
-                b_H = [hl.transform(b_X) for hl in self.hidden_layers_]
-                b_H = np.hstack(b_H if not self.include_original_features else [_dense(b_X)] + b_H)
-                self.solver_.partial_fit(b_H, b_y, compute_output_weights=False)
-
-            self.solver_.partial_fit(None, None, compute_output_weights=True)
-
-        self.is_fitted_ = True
+        self._reset()
+        self.partial_fit(X, y)
         return self
 
     def predict(self, X):
@@ -335,50 +379,32 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
             self.solver_.XtY_ = XtY_new
 
         # reset the solution
-        if hasattr(self.solver_, 'coef_'):
-            del self.solver_.coef_, self.solver_.intercept_
+        if hasattr(self.solver_, 'is_fitted_'):
+            del self.solver_.is_fitted_
 
-
-    # todo: bring partial_fit back!
-
-    '''    def partial_fit(self, X, y=None, classes=None, update_classes=False, compute_output_weights=True):
+    def partial_fit(self, X, y=None, classes=None, update_classes=False, compute_output_weights=True):
         """Update classifier with new data.
 
         :param classes: ignored
         :param update_classes: Includes new classes from 'y' into the model;
                                assumes they are set to 0 in all previous targets.
         """
-        
-        #todo: make nice code for the initial fit vs. continuous partial_fit
-        X, y = self._prepare_model(X, y)
 
+        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
 
-        # extra stuff for already fitted models
-        try:
-            # Check is fit had been called
-            check_is_fitted(self, 'n_features_')
-            
-            if X.shape[1] != self.n_features_:
-                raise ValueError('Shape of input is different from what was seen in `fit`')
-                
-            if not hasattr(self.solver_, "partial_fit"):
-                raise ValueError("{} base solver does not support partial_fit".format(self.solver_.__class__.__name__))
-        except NotFittedError:
-            pass
-            # X, y = self._prepare_model(X, y)
-                
+        # init label binarizer if needed
+        if not hasattr(self, 'label_binarizer_'):
+            self.label_binarizer_ = LabelBinarizer()
+            if type_of_target(y).endswith("-multioutput"):
+                self.label_binarizer_ = MultiLabelBinarizer()
+            self.label_binarizer_.fit(self.classes if self.classes is not None else y)
+
         if update_classes:
             self._update_classes(y)
 
-        Y_numeric = self.label_binarizer_.transform(y)
-        H = HiddenLayer.transform(self, X)
-
-        if self.solver.lower() == "iterative":
-            self.solver_.partial_fit(H, Y_numeric, compute_output_weights=compute_output_weights)
-        else:
-            self.solver_.partial_fit(H, Y_numeric)
+        y_numeric = self.label_binarizer_.transform(y)
+        super().partial_fit(X, y_numeric, compute_output_weights=compute_output_weights)
         return self
-    '''
 
     def fit(self, X, y=None):
         """Fit a classifier erasing any previously trained model.
@@ -388,17 +414,9 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
         self : object
             Returns self.
         """
-
-        X, y = check_X_y(X, y, accept_sparse=['csr', 'csc', 'coo'], multi_output=True)
-
-        self.label_binarizer_ = LabelBinarizer()
-        if type_of_target(y).endswith("-multioutput"):
-            self.label_binarizer_ = MultiLabelBinarizer()
-        self.label_binarizer_.fit(self.classes if self.classes is not None else y)
-
-        y_numeric = self.label_binarizer_.transform(y)
-
-        super().fit(X, y_numeric)
+        if hasattr(self, "label_binarizer_"):
+            del self.label_binarizer_
+        self.partial_fit(X, y, compute_output_weights=True)
         return self
 
     def predict(self, X):

@@ -53,11 +53,10 @@ def test_ClassifierRidge_PartialFit_NotSupported():
 #todo: add custom solver support
 
 
-@pytest.mark.skip("Partial_fit broken")
 def test_Classifier_PartialFit():
     X, T = load_iris(return_X_y=True)
-    elm0 = ELMClassifier(n_neurons=10, alpha=1, random_state=0)
-    elm1 = ELMClassifier(n_neurons=10, alpha=1, random_state=0)
+    elm0 = ELMClassifier(n_neurons=4, alpha=1, random_state=0)
+    elm1 = ELMClassifier(n_neurons=4, alpha=1, random_state=0)
 
     elm0.fit(X, T)
     elm1.partial_fit(X[::2], T[::2])
@@ -66,7 +65,6 @@ def test_Classifier_PartialFit():
     assert elm0.solver_.coef_ == approx(elm1.solver_.coef_)
 
 
-@pytest.mark.skip("Partial_fit broken")
 def test_IterativeClassification_FeedClassesOneByOne():
     X, T = load_iris(return_X_y=True)
     elm = ELMClassifier(classes=[0, -1, -2], n_neurons=10, alpha=1)
@@ -87,7 +85,6 @@ def test_IterativeClassification_FeedClassesOneByOne():
     assert set(Yh) == {0, 1, 2}
 
 
-@pytest.mark.skip("Partial_fit broken")
 def test_IterativeSolver_SkipIntermediateSolution():
     X, T = load_iris(return_X_y=True)
     elm = ELMClassifier(classes=[0, 1, 2], n_neurons=10, alpha=1)

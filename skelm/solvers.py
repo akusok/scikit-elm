@@ -67,7 +67,7 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
         """Update model with a new batch of data.
         
         Output weight computation can be temporary turned off for faster processing. This will mark model as
-        not trained. Enable `compute_output_weights` in the final call to `partial_fit`.
+        not fit. Enable `compute_output_weights` in the final call to `partial_fit`.
 
         Parameters
         ----------
