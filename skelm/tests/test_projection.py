@@ -29,8 +29,8 @@ params = [
 
 @pytest.mark.parametrize("data,elm_model", params)
 def test_Default_SetNumberOfNeurons(data, elm_model):
-    elm5 = elm_model(n_neurons=5).fit(*data)
-    elm50 = elm_model(n_neurons=50).fit(*data)
+    elm5 = elm_model(n_neurons=5, random_state=0).fit(*data)
+    elm50 = elm_model(n_neurons=50, random_state=0).fit(*data)
     score5 = elm5.score(*data)
     score50 = elm50.score(*data)
     assert score50 > score5
@@ -39,7 +39,7 @@ def test_Default_SetNumberOfNeurons(data, elm_model):
 
 @pytest.mark.parametrize("data,elm_model", params)
 def test_LinearPart_CanBeIncluded(data, elm_model):
-    elm = elm_model(include_original_features=True).fit(*data)
+    elm = elm_model(include_original_features=True, random_state=0).fit(*data)
     score = elm.score(*data)
     assert score > 0.33
 

@@ -61,7 +61,7 @@ def test_PartialFit_SeveralParts():
     solver.partial_fit(X[::2], 2 * Y[::2] @ np.array([[0, 0], [0, 1]]))
 
     Yh = solver.predict(X[1::2])
-    assert Y[1::2] == approx(Yh)
-    assert solver.coef_ == approx(W)
+    assert Y[1::2] == approx(Yh, rel=1e-3)
+    assert solver.coef_ == approx(W, rel=1e-3)
     assert solver.intercept_ == approx(np.array([-2, -2]))
 

@@ -35,7 +35,7 @@ def test_Classifier_FitOnPandas_ReturnsNumpy(data_class):
 
 def test_Classification_BetterThanNaive(data_class):
     X, Y = data_class
-    elm = ELMClassifier().fit(X, Y)
+    elm = ELMClassifier(random_state=0).fit(X, Y)
     score = elm.score(X, Y)
     assert score > 0.33
 
@@ -47,6 +47,6 @@ def test_Regressor_FitOnPandas_ReturnsNumpy(data_reg):
 
 def test_Regression_BetterThanNaive(data_reg):
     X, Y = data_reg
-    elm = ELMRegressor().fit(X, Y)
+    elm = ELMRegressor(random_state=0).fit(X, Y)
     r2score = elm.score(X, Y)
     assert r2score > 0.3
