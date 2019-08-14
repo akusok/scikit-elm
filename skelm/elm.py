@@ -9,10 +9,8 @@ from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, clone
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels, type_of_target
 
-from sklearn.linear_model import Ridge
-from sklearn.utils.extmath import safe_sparse_dot
 from sklearn.preprocessing import LabelBinarizer, MultiLabelBinarizer
-from sklearn.exceptions import DataConversionWarning, NotFittedError
+from sklearn.exceptions import DataConversionWarning
 
 from .hidden_layer import HiddenLayer
 from .solvers import BatchCholeskySolver
@@ -282,18 +280,11 @@ class ELMRegressor(_BaseELM, RegressorMixin):
     ufunc_ : function
         Tranformation function of hidden neurons.
 
-        .. todo:: Make hidden layer a separate object rather than superclass; then allow merging several hidden layers.
-
     projection_ : object
         Hidden layer projection function.
 
-        .. todo:: Make an RBF projection function.
-
     solver_ : object
         Solver instance, read solution from there.
-
-        .. todo:: Copy solution parameters directly in `ELMRegression` class
-
 
 
     Examples
@@ -304,16 +295,16 @@ class ELMRegressor(_BaseELM, RegressorMixin):
     >>> model = ELMRegressor(n_neurons=(10, 20),
     ...                      ufunc=('sigm', None),
     ...                      density=(None, None),
-    ...                      pairwise_metric=(None, 'euclidean'))
+    ...                      pairwise_metric=(None, 'euclidean'))   # doctest: +SKIP
 
     Default values in multi-neuron ELM are automatically expanded to a list
 
     >>>  model = ELMRegressor(n_neurons=(10, 20),
     ...                       ufunc=('sigm', None),
-    ...                       pairwise_metric=(None, 'euclidean'))
+    ...                       pairwise_metric=(None, 'euclidean'))   # doctest: +SKIP
 
     >>>  model = ELMRegressor(n_neurons=(30, 30),
-    ...                       pairwise_metric=('cityblock', 'cosine'))
+    ...                       pairwise_metric=('cityblock', 'cosine'))   # doctest: +SKIP
     """
     pass
 
