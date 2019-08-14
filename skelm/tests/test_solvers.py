@@ -20,7 +20,7 @@ def test_PartialFitSolution():
     Y = X @ np.array([1, 2, 3]) - 2
     solver = BatchCholeskySolver().partial_fit(X[::2], Y[::2])
     Yh = solver.predict(X[1::2])
-    assert Y[1::2] == approx(Yh)
+    assert Y[1::2] == approx(Yh, rel=1e-3)
     assert solver.coef_ == approx(np.array([1, 2, 3]), rel=1e-3)
     assert solver.intercept_ == approx(-2)
 
