@@ -11,7 +11,7 @@ def test_SingleStepSolution():
     solver = BatchCholeskySolver().fit(X[::2], Y[::2])
     Yh = solver.predict(X[1::2])
     assert Y[1::2] == approx(Yh)
-    assert solver.coef_ == approx(np.array([1, 2, 3]))
+    assert solver.coef_ == approx(np.array([1, 2, 3]), rel=1e-3)
     assert solver.intercept_ == approx(-2)
 
 
@@ -21,7 +21,7 @@ def test_PartialFitSolution():
     solver = BatchCholeskySolver().partial_fit(X[::2], Y[::2])
     Yh = solver.predict(X[1::2])
     assert Y[1::2] == approx(Yh)
-    assert solver.coef_ == approx(np.array([1, 2, 3]))
+    assert solver.coef_ == approx(np.array([1, 2, 3]), rel=1e-3)
     assert solver.intercept_ == approx(-2)
 
 

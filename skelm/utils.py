@@ -70,6 +70,8 @@ class PairwiseRandomProjection(BaseEstimator, TransformerMixin):
         transformer.fit(X)
         random_centroids = self.random_state_.rand(self.n_components, X.shape[1])
         self.components_ = transformer.inverse_transform(random_centroids)
+
+        self.n_jobs_ = 1 if self.n_jobs is None else self.n_jobs
         return self
 
     def transform(self, X):
@@ -94,9 +96,9 @@ class PairwiseRandomProjection(BaseEstimator, TransformerMixin):
                 '(%s != %s)' % (X.shape[1], self.components_.shape[1]))
 
         try:
-            X_dist = pairwise_distances(X, self.components_, n_jobs=self.n_jobs, metric=self.pairwise_metric)
+            X_dist = pairwise_distances(X, self.components_, n_jobs=self.n_jobs_, metric=self.pairwise_metric)
         except TypeError:
             # scipy distances that don't support sparse matrices
-            X_dist = pairwise_distances(_dense(X), _dense(self.components_), n_jobs=self.n_jobs, metric=self.pairwise_metric)
+            X_dist = pairwise_distances(_dense(X), _dense(self.components_), n_jobs=self.n_jobs_, metric=self.pairwise_metric)
 
         return X_dist
