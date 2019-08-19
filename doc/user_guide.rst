@@ -6,8 +6,15 @@
 User guide: create your own scikit-learn estimator
 ==================================================
 
-Estimator
----------
+Scikit-ELM includes:
+
+    - High-level classification and regression tools compatible with Scikit-Learn
+    - Low-level batch linear solver with optional out-of-core execution or GPU acceleration
+    - (*discussed in next section*) Techniques for automatic parameter tuning, updating old trained models with new data, distributed training, and exporting trained models to a standard neural network format for inference.
+    
+
+ELM Regressor
+-------------
 
 The central piece of transformer, regressor, and classifier is
 :class:`sklearn.base.BaseEstimator`. All estimators in scikit-learn are derived
@@ -21,8 +28,9 @@ Once imported, you can create a class which inherate from this base class::
     >>> class MyOwnEstimator(BaseEstimator):
     ...     pass
 
-Transformer
------------
+
+ELM Classifier
+--------------
 
 Transformers are scikit-learn estimators which implement a ``transform`` method.
 The use case is the following:
@@ -72,11 +80,27 @@ within a scikit-learn ``pipeline``:
     >>> pipe.predict(X)  # doctest: +ELLIPSIS
     array([...])
 
-Predictor
----------
 
-Regressor
-~~~~~~~~~
+Solvers
+-------
+
+Linear solvers
+
+Batch Solver
+~~~~~~~~~~~~
+Cool batch solver with adding/deleting data on live model, GPU and parallel computations.
+
+
+Hidden Layer
+------------
+
+Technical term, a data transformer that generates any given number of features from
+input dataset. Aims for non-linear and independent (orthogonal) features.
+
+Different ways of generation: random projection for low->low number of features,
+sparse random projecton for high->low number of features, pairwise for
+distance-based projection.
+
 
 Similarly, regressors are scikit-learn estimators which implement a ``predict``
 method. The use case is the following:

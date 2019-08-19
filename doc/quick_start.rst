@@ -1,6 +1,47 @@
 #####################################
-Quick Start with the project-template
+Quick Start with Scikit-ELM
 #####################################
+
+
+
+
+Install
+=======
+
+How to install
+
+
+Setup
+=====
+
+How is this different from install
+
+
+Features
+========
+
+What can you do
+
+
+Use Cases
+=========
+
+Typical applications
+
+
+:mod:`scikit-elm` Cheat Sheet
+=============================
+
+Typical commands use
+
+
+
+
+
+
+
+
+
 
 This package serves as a skeleton package aiding at developing compatible
 scikit-learn contribution.

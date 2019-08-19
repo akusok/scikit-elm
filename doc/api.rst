@@ -28,9 +28,17 @@ Hidden Layer
 
     HiddenLayer
 
-Solver
-======
+Solvers
+=======
 .. autosummary::
    :toctree: generated/
 
     BatchCholeskySolver
+    
+    
+Utilities
+=========
+.. autosummary::
+   :toctree: generated/
+
+    utils
