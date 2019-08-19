@@ -106,6 +106,22 @@ class _BaseELM(BaseEstimator):
 
             .. Note::
                 Solution can be updated without extra data by setting `X=None` and `y=None`.
+
+            Example:
+                >>> model.partial_fit(X_1, y_1)
+                ... model.partial_fit(X_2, y_2)
+                ... model.partial_fit(X_3, y_3)
+
+            Faster, option 1:
+                >>> model.partial_fit(X_1, y_1, compute_output_weights=False)
+                ... model.partial_fit(X_2, y_2, compute_output_weights=False)
+                ... model.partial_fit(X_3, y_3)
+
+            Faster, option 2:
+                >>> model.partial_fit(X_1, y_1, compute_output_weights=False)
+                ... model.partial_fit(X_2, y_2, compute_output_weights=False)
+                ... model.partial_fit(X_3, y_3, compute_output_weights=False)
+                ... model.partial_fit(X=None, y=None)
         """
         # compute output weights only
         if X is None and y is None and compute_output_weights:
@@ -203,7 +219,6 @@ class _BaseELM(BaseEstimator):
                 and very high number of samples. Feed data by smaller batches in such case.
         """
         
-        #todo: add bunch of files support
         X = check_array(X, accept_sparse=True)
         check_is_fitted(self, "is_fitted_")
 
@@ -239,8 +254,6 @@ class ELMRegressor(_BaseELM, RegressorMixin):
             The model may automatically increase the regularization value if the solution
             becomes unfeasible otherwise. The actual used value contains in ``alpha_`` attribute.
 
-        .. todo:: unittest negative alphas
-
     batch_size : int, optional
         Actual computations will proceed in batches of this size, except the last batch that may be smaller.
         Default behavior is to process all data at once with <10,000 samples, otherwise use batches
@@ -266,8 +279,6 @@ class ELMRegressor(_BaseELM, RegressorMixin):
             Models with <1,000 neurons are very fast to compute, while GPU acceleration is efficient
             starting from 1,000-2,000 neurons. A standard computer should handle up to 10,000 neurons.
             Very large models will not fit in memory but can still be trained by an out-of-core solver.
-
-        .. todo:: multiple neuron types with pipelines and feature stacking
 
     ufunc : {'tanh', 'sigm', 'relu', 'lin' or callable}, or a list of those (see n_neurons)
         Transformation function of hidden layer neurons. Includes the following options:

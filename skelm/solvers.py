@@ -84,6 +84,9 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
             .. Note::
                 Solution can be updated without extra data by setting `X=None` and `y=None`.
         """
+        if self.alpha < 0:
+            raise ValueError("Regularization parameter alpha must be non-negative.")
+
         # solution only
         if X is None and y is None and compute_output_weights:
             self._solve()

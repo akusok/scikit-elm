@@ -146,3 +146,9 @@ def test_MultipleHL_WrongDimensions_Raises(data_reg):
     elm = ELMRegressor(n_neurons=[1, 2, 3, 4], ufunc=['relu', 'sigm'])
     with pytest.raises(ValueError):
         elm.fit(X, Y)
+
+def test_RegularizationAlpha_NegativeValue_Raises(data_class):
+    X, Y = data_class
+    elm = ELMClassifier(alpha=-1)
+    with pytest.raises(ValueError):
+        elm.fit(X, Y)
