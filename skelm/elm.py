@@ -110,18 +110,18 @@ class _BaseELM(BaseEstimator):
             Example:
                 >>> model.partial_fit(X_1, y_1)
                 ... model.partial_fit(X_2, y_2)
-                ... model.partial_fit(X_3, y_3)
+                ... model.partial_fit(X_3, y_3)    # doctest: +SKIP
 
             Faster, option 1:
                 >>> model.partial_fit(X_1, y_1, compute_output_weights=False)
                 ... model.partial_fit(X_2, y_2, compute_output_weights=False)
-                ... model.partial_fit(X_3, y_3)
+                ... model.partial_fit(X_3, y_3)    # doctest: +SKIP
 
             Faster, option 2:
                 >>> model.partial_fit(X_1, y_1, compute_output_weights=False)
                 ... model.partial_fit(X_2, y_2, compute_output_weights=False)
                 ... model.partial_fit(X_3, y_3, compute_output_weights=False)
-                ... model.partial_fit(X=None, y=None)
+                ... model.partial_fit(X=None, y=None)    # doctest: +SKIP
         """
         # compute output weights only
         if X is None and y is None and compute_output_weights:
