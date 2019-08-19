@@ -46,7 +46,34 @@ class _BaseELM(BaseEstimator):
             hl.fit(X)
             self.hidden_layers_ = (hl, )
 
-        #todo: support several hidden layers, with unit tests
+        # several different types of neurons
+        else:
+            k = len(self.n_neurons)
+
+            # fix default values
+            ufuncs = self.ufunc
+            if isinstance(ufuncs, str) or not hasattr(ufuncs, "__iter__"):
+                ufuncs = [ufuncs] * k
+
+            densities = self.density
+            if densities is None or not hasattr(densities, "__iter__"):
+                densities = [densities] * k
+
+            pw_metrics = self.pairwise_metric
+            if pw_metrics is None or isinstance(pw_metrics, str):
+                pw_metrics = [pw_metrics] * k
+
+            if not k == len(ufuncs) == len(densities) == len(pw_metrics):
+                raise ValueError("Inconsistent parameter lengths for model with {} different types of neurons.\n"
+                                 "Set 'ufunc', 'density' and 'pairwise_distances' by lists "
+                                 "with {} elements, or leave the default values.".format(k, k))
+
+            self.hidden_layers_ = []
+            for n_neurons, ufunc, density, metric in zip(self.n_neurons, ufuncs, densities, pw_metrics):
+                hl = HiddenLayer(n_neurons=n_neurons, density=density, ufunc=ufunc,
+                                 pairwise_metric=metric, random_state=self.random_state)
+                hl.fit(X)
+                self.hidden_layers_.append(hl)
 
     def _reset(self):
         [delattr(self, attr) for attr in ('n_features_', 'solver_', 'hidden_layers_', 'is_fitted_') if hasattr(self, attr)]
