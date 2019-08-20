@@ -2,7 +2,7 @@ import pytest
 from pytest import approx
 import numpy as np
 
-from skelm.solvers import BatchCholeskySolver
+from skelm.solver_batch import BatchCholeskySolver
 
 
 def test_SingleStepSolution():

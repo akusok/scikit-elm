@@ -11,6 +11,7 @@ Regressor
    :template: class.rst
 
    ELMRegressor
+   LargeELMRegressor
 
 Classifier
 ==========

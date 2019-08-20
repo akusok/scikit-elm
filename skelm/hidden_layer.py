@@ -1,13 +1,12 @@
 import numpy as np
 import scipy as sp
-from enum import Enum
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils import check_random_state
 from sklearn.utils.validation import check_array, check_is_fitted
 
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
-from .utils import PairwiseRandomProjection
+from .utils import PairwiseRandomProjection, HiddenLayerType
 
 # suppress annoying warning of random projection into a higher-dimensional space
 import warnings
@@ -22,12 +21,6 @@ def auto_neuron_count(n, d):
 def dummy(x):
     return x
 
-
-class HiddenLayerType(Enum):
-    RANDOM = 1    # Gaussian random projection
-    SPARSE = 2    # Sparse Random Projection
-    PAIRWISE = 3  # Pairwise kernel with a number of centroids
-    
 
 ufuncs = {"tanh": np.tanh,
           "sigm": sp.special.expit,

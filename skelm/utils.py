@@ -1,8 +1,14 @@
 import scipy as sp
+from enum import Enum
 from sklearn.metrics import pairwise_distances
-from sklearn.preprocessing import QuantileTransformer
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array, check_is_fitted, check_random_state
+
+
+class HiddenLayerType(Enum):
+    RANDOM = 1    # Gaussian random projection
+    SPARSE = 2    # Sparse Random Projection
+    PAIRWISE = 3  # Pairwise kernel with a number of centroids
 
 
 def flatten(items):
@@ -13,6 +19,10 @@ def flatten(items):
             yield from flatten(x)
         else:
             yield x
+
+
+def _is_list_of_strings(obj):
+    return obj is not None and all(isinstance(elem, str) for elem in obj)
 
 
 def _dense(X):
@@ -51,8 +61,7 @@ class PairwiseRandomProjection(BaseEstimator, TransformerMixin):
     def fit(self, X, y=None):
         """Generate artificial centroids.
 
-        Fit a QuantileTransformer to project from data distribution onto a normal one,
-        then sample centroids from normal distribution and inverse-project into the data space.
+        Centroids are sampled from a normal distribution. They work best if the data is normalized.
 
         Parameters
         ----------
@@ -65,12 +74,7 @@ class PairwiseRandomProjection(BaseEstimator, TransformerMixin):
         if self.n_components <= 0:
             raise ValueError("n_components must be greater than 0, got %s" % self.n_components)
 
-        transformer = QuantileTransformer(n_quantiles=min(100, X.shape[0]), ignore_implicit_zeros=True,
-                                          random_state=self.random_state_)
-        transformer.fit(X)
-        random_centroids = self.random_state_.rand(self.n_components, X.shape[1])
-        self.components_ = transformer.inverse_transform(random_centroids)
-
+        self.components_ = self.random_state_.randn(self.n_components, X.shape[1])
         self.n_jobs_ = 1 if self.n_jobs is None else self.n_jobs
         return self
 

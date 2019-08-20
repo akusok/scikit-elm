@@ -13,15 +13,16 @@ from sklearn.preprocessing import LabelBinarizer, MultiLabelBinarizer
 from sklearn.exceptions import DataConversionWarning
 
 from .hidden_layer import HiddenLayer
-from .solvers import BatchCholeskySolver
+from .solver_batch import BatchCholeskySolver
 from .utils import _dense
 
 
 
 class _BaseELM(BaseEstimator):
 
-    def __init__(self, alpha=1e-7, batch_size=None, include_original_features=False, n_neurons=None, ufunc="tanh",
-                 density=None, pairwise_metric=None, random_state=None):
+    def __init__(self, alpha=1e-7, batch_size=None, include_original_features=False,
+                 n_neurons=None, ufunc="tanh", density=None, pairwise_metric=None,
+                 random_state=None):
         self.alpha = alpha
         self.n_neurons = n_neurons
         self.batch_size = batch_size
@@ -31,14 +32,11 @@ class _BaseELM(BaseEstimator):
         self.pairwise_metric = pairwise_metric
         self.random_state = random_state
 
-    def _init_model(self, X):
+    def _init_hidden_layers(self, X):
         """Init an empty model, creating objects for hidden layers and solver.
 
         Also validates inputs for several hidden layers.
         """
-        self.n_features_ = X.shape[1]
-        self.solver_ = BatchCholeskySolver(alpha=self.alpha)
-
         # only one type of neurons
         if not hasattr(self.n_neurons, '__iter__'):
             hl = HiddenLayer(n_neurons=self.n_neurons, density=self.density, ufunc=self.ufunc,
@@ -140,14 +138,16 @@ class _BaseELM(BaseEstimator):
         if hasattr(self, 'n_features_') and self.n_features_ != n_features:
             raise ValueError('Shape of input is different from what was seen in `fit`')
 
-        # init model if not fit yet
-        if not hasattr(self, 'hidden_layers_'):
-            self._init_model(X)
-
         # set batch size, default is bsize=2000 or all-at-once with less than 10_000 samples
         self.bsize_ = self.batch_size
         if self.bsize_ is None:
             self.bsize_ = n_samples if n_samples < 10 * 1000 else 2000
+
+        # init model if not fit yet
+        if not hasattr(self, 'hidden_layers_'):
+            self.n_features_ = n_features
+            self.solver_ = BatchCholeskySolver(alpha=self.alpha)
+            self._init_hidden_layers(X)
 
         # special case of one-shot processing
         if self.bsize_ >= n_samples:

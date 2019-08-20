@@ -1,10 +1,9 @@
 import pytest
 from pytest import approx
 import numpy as np
-import warnings
-warnings.filterwarnings("ignore", message="DataDimensionalityWarning")
 from sklearn.datasets import load_iris, make_multilabel_classification, load_diabetes
 from skelm import ELMRegressor, ELMClassifier
+
 
 @pytest.fixture
 def data_class():
@@ -17,7 +16,6 @@ def data_ml():
 @pytest.fixture
 def data_reg():
     return load_diabetes(return_X_y=True)
-
 
 def test_SineWave_Solves():
     """A highly non-linear regression problem, with added strong noise.
