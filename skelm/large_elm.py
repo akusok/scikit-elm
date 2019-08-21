@@ -120,7 +120,7 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
                 elif hl.ufunc_ is np.tanh:
                     H0 = da.tanh(XW_dask)
                 else:
-                    H0 = da.apply_gufunc(hl.ufunc_, "(i)->(i)", XW_dask)
+                    H0 = XW_dask.map_blocks(hl.ufunc_)
             H_list.append(H0)
 
         if self.include_original_features:
