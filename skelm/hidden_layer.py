@@ -6,7 +6,7 @@ from sklearn.utils import check_random_state
 from sklearn.utils.validation import check_array, check_is_fitted
 
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
-from .utils import PairwiseRandomProjection, HiddenLayerType
+from .utils import PairwiseRandomProjection, HiddenLayerType, dummy
 
 # suppress annoying warning of random projection into a higher-dimensional space
 import warnings
@@ -16,10 +16,6 @@ warnings.filterwarnings("ignore", message="DataDimensionalityWarning")
 def auto_neuron_count(n, d):
     # computes default number of neurons for `n` data samples with `d` features
     return min(int(250 * np.log(1 + d/10) - 15), n//3 + 1)
-
-
-def dummy(x):
-    return x
 
 
 ufuncs = {"tanh": np.tanh,

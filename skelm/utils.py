@@ -11,6 +11,10 @@ class HiddenLayerType(Enum):
     PAIRWISE = 3  # Pairwise kernel with a number of centroids
 
 
+def dummy(x):
+    return x
+
+
 def flatten(items):
     """Yield items from any nested iterable."""
     for x in items:

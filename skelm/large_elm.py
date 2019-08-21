@@ -8,7 +8,7 @@ import dask.dataframe as dd
 
 from .elm import _BaseELM
 from dask.distributed import Client, LocalCluster, wait
-from .utils import _is_list_of_strings, _dense, HiddenLayerType
+from .utils import _is_list_of_strings, _dense, HiddenLayerType, dummy
 
 
 def _read_numeric_file(fname):
@@ -39,7 +39,7 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
         Reading from files saves memory by loading data in small chunks, supporting arbitrary large input files.
         It also solves current memory leaks with Numpy matrix inputs in Dask.
 
-        Any data format can be easily converted to Parquet, see `Analytical methods <>`_ section.
+        Any data format can be easily converted to Parquet, see `Analytical methods <techniques.html>`_ section.
 
         HDF5 is almost as good as Parquet, but performs worse with Dask due to internal data layout.
 
@@ -58,9 +58,106 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
         Batch size used for both data samples and hidden neurons. With batch Cholesky solver, allows for very large
         numbers of hidden neurons of over 100,000; limited only by the computation time and disk swap space.
 
+        .. hint:: Include bias and original features for best performance.
+
+        ELM will include a bias term (1 extra feature), and the original features with `include_original_features=True`.
+        For optimal performance, choose `batch_size` to be equal or evenly divide the
+        `n_neurons + 1 (bias) + n_inputs (if include_original_features=True)`.
+
         .. todo:: Exact batch_size vs. GPU performance
     """
 
+
+    def __del__(self):
+        if hasattr(self, 'client_'):
+            self.client_.close()
+            self.cluster_.close()
+
+    def _setup_dask_client(self):
+        self.cluster_ = LocalCluster(
+            n_workers=4, threads_per_worker=1,
+            local_dir="/Users/akusok/wrkdir/dask-temp",
+            memory_limit="8GB"
+        )
+        self.client_ = Client(self.cluster_)
+
+        W_list = [hl.projection_.components_ for hl in self.hidden_layers_]
+        W_dask = [da.from_array(_dense(W), chunks=self.bsize_) for W in W_list]
+        self.W_ = self.client_.persist(W_dask)
+
+        def foo():
+            import os
+            os.environ['OMP_NUM_THREADS'] = '1'
+        self.client_.run(foo)
+
+        print("Running on:", self.client_)
+
+        try:
+            dashboard = self.client_.scheduler_info()['address'].split(":")
+            dashboard[0] = "http"
+            dashboard[-1] = str(self.client_.scheduler_info()['services']['dashboard'])
+            print("Dashboard at", ":".join(dashboard))
+        except:
+            pass
+
+    def _project(self, X_dask):
+        """Compute hidden layer output with Dask functionality.
+        """
+        H_list = []
+        for hl, W in zip(self.hidden_layers_, self.W_):
+            if hl.hidden_layer_ == HiddenLayerType.PAIRWISE:
+                H0 = X_dask.map_blocks(
+                    pairwise_distances,
+                    W,
+                    dtype=X_dask.dtype,
+                    chunks=(X_dask.chunks[0], (W.shape[0],)),
+                    metric=hl.pairwise_metric
+                )
+            else:
+                XW_dask = da.dot(X_dask, W.transpose())
+                if hl.ufunc_ is dummy:
+                    H0 = XW_dask
+                elif hl.ufunc_ is np.tanh:
+                    H0 = da.tanh(XW_dask)
+                else:
+                    H0 = da.apply_gufunc(hl.ufunc_, "(i)->(i)", XW_dask)
+            H_list.append(H0)
+
+        if self.include_original_features:
+            H_list.append(X_dask)
+        H_list.append(da.ones((X_dask.shape[0], 1)))
+
+        H_dask = da.concatenate(H_list, axis=1).rechunk(self.bsize_)
+        return H_dask
+
+    def _solve(self, HH, HY):
+        """Compute output weights from HH and HY using Dask functionality.
+        """
+        # make HH/HY divisible by chunk size
+        n_features, _ = HH.shape
+        padding = 0
+        if n_features > self.bsize_ and n_features % self.bsize_ > 0:
+            print("Adjusting batch size {} to n_features {}".format(self.bsize_, n_features))
+            padding = self.bsize_ - (n_features % self.bsize_)
+            P01 = da.zeros((n_features, padding))
+            P10 = da.zeros((padding, n_features))
+            P11 = da.zeros((padding, padding))
+            HH = da.block([[HH,  P01],
+                           [P10, P11]])
+
+            P1 = da.zeros((padding, HY.shape[1]))
+            HY = da.block([[HY],
+                           [P1]])
+
+        # rechunk, add bias, and solve
+        HH = HH.rechunk(self.bsize_) + self.alpha * da.eye(HH.shape[1], chunks=self.bsize_)
+        HY = HY.rechunk(self.bsize_)
+
+        B = da.linalg.solve(HH, HY, sym_pos=True)
+        if padding > 0:
+            B = B[:n_features]
+
+        return B
 
     def fit(self, X, y=None, sync_every=10):
         """Fits an ELM with data in a bunch of files.
@@ -75,6 +172,12 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
         .. todo:: Check if some sparse data would work.
 
         .. todo:: Check that sync_every does not affect results
+
+        .. todo:: Add single precision
+
+        Original features and bias are added to the end of data, for easier rechunk-merge. This way full chunks
+        of hidden neuron outputs stay intact.
+
 
         Parameters
         ----------
@@ -120,49 +223,19 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
         if not hasattr(self, 'hidden_layers_'):
             self.n_features_ = n_features
             self.n_outputs_ = n_outputs
-            self.cluster_ = LocalCluster(n_workers=4)
-            self.client_ = Client(self.cluster_)
-            print("Running on:", self.client_)
-
-            try:
-                dashboard = self.client_.scheduler_info()['address'].split(":")
-                dashboard[0] = "http"
-                dashboard[-1] = str(self.client_.scheduler_info()['services']['dashboard'])
-                print("Dashboard at", ":".join(dashboard))
-            except:
-                pass
 
             X_sample = X_dask[:10].compute()
             self._init_hidden_layers(X_sample)
-
-        W_dask = [da.from_array(_dense(hl.projection_.components_)) for hl in self.hidden_layers_]
-        HH = None
-        HY = None
+            self._setup_dask_client()
 
         # processing files
+        HH = None
+        HY = None
         for i, X_file, y_file in zip(range(len(X)), X, y):
             X_dask = dd.read_parquet(X_file).to_dask_array(lengths=True)
             Y_dask = dd.read_parquet(y_file).to_dask_array(lengths=True)
+            H_dask = self._project(X_dask)
 
-            H_list = [da.ones((X_dask.shape[0], 1))]
-            if self.include_original_features:
-                H_list.append(X_dask)
-
-            for hl, W in zip(self.hidden_layers_, W_dask):
-                if hl.hidden_layer_ == HiddenLayerType.PAIRWISE:
-                    H0 = X_dask.map_blocks(
-                        pairwise_distances,
-                        W,
-                        dtype=X_dask.dtype,
-                        chunks=(X_dask.chunks[0], (W.shape[0],)),
-                        metric=hl.pairwise_metric
-                    )
-                else:
-                    XW_dask = da.dot(X_dask, W.transpose())
-                    H0 = hl.ufunc_(XW_dask)
-                H_list.append(H0)
-
-            H_dask = da.concatenate(H_list, axis=1).rechunk(self.bsize_)
             if HH is None:  # first iteration
                 HH = da.dot(H_dask.transpose(), H_dask)
                 HY = da.dot(H_dask.transpose(), Y_dask)
@@ -180,33 +253,7 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
         if sync_every is not None:
             wait([HH, HY])
 
-        # make HH/HY divisible by chunk size
-        n_features, _ = HH.shape
-        padding = 0
-        if n_features > self.bsize_ and n_features % self.bsize_ > 0:
-            padding = self.bsize_ - (n_features % self.bsize_)
-            P01 = da.zeros((n_features, padding))
-            P10 = da.zeros((padding, n_features))
-            P11 = da.zeros((padding, padding))
-            HH = da.block([[HH,  P01],
-                           [P10, P11]])
-
-            P1 = da.zeros((padding, HY.shape[1]))
-            HY = da.block([[HY],
-                           [P1]])
-
-        # rechunk, add bias, and solve
-        HH = HH.rechunk(self.bsize_) + self.alpha * da.eye(HH.shape[1], chunks=self.bsize_)
-        HY = HY.rechunk(self.bsize_)
-
-        B = da.linalg.solve(HH, HY, sym_pos=True)
-        if padding > 0:
-            B = B[:n_features]
-
-        self.B = B
-
-        print(HH.compute()[:5,:5])
-
+        self.B = self._solve(HH, HY)
         self.is_fitted_ = True
         return self
 
@@ -233,31 +280,11 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
 
         if _is_list_of_strings(X):
             Yh_list = []
-            W_dask = [da.from_array(_dense(hl.projection_.components_)) for hl in self.hidden_layers_]
 
             # processing files
             for X_file in X:
                 X_dask = dd.read_parquet(X_file).to_dask_array(lengths=True)
-
-                H_list = [da.ones((X_dask.shape[0], 1))]
-                if self.include_original_features:
-                    H_list.append(X_dask)
-
-                for hl, W in zip(self.hidden_layers_, W_dask):
-                    if hl.hidden_layer_ == HiddenLayerType.PAIRWISE:
-                        H0 = X_dask.map_blocks(
-                            pairwise_distances,
-                            W,
-                            dtype=X_dask.dtype,
-                            chunks=(X_dask.chunks[0], (W.shape[0],)),
-                            metric=hl.pairwise_metric
-                        )
-                    else:
-                        XW_dask = da.dot(X_dask, W.transpose())
-                        H0 = hl.ufunc_(XW_dask)
-                    H_list.append(H0)
-
-                H_dask = da.concatenate(H_list, axis=1).rechunk(self.bsize_)
+                H_dask = self._project(X_dask)
                 Yh_list.append(da.dot(H_dask, self.B))
 
             Yh_dask = da.concatenate(Yh_list, axis=0)
