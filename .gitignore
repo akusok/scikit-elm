@@ -17,6 +17,7 @@ doc/datasets/generated/
 .Python
 .ipynb_checkpoints
 .idea
+dask-worker-space/
 env/
 build/
 develop-eggs/
