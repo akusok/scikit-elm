@@ -45,6 +45,26 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
 
     .. todo: Write converters.
 
+    .. todo: Memo about number of workers: one is good, several cover disk read latency but need more memory.
+        On one machine matrix operators always run in parallel, do not benefit from Dask.
+
+    .. todo: Memory consumption with large number of neurons - 100,000 neurons require 200GB or swap space, with
+        read+write reaching 1GB/s. Suggested a fast SSD, or HDD + extra workers to hide swap latency.
+        Mention that Dask is not the perfect solution, kept here for future updates. And it actually solves
+        stuff larger than memory, albeit at a very high time+swap cost.
+
+    .. todo: Avoid large batch sizes as workers can fail, safe bet is 2000-5000 range.
+
+    .. todo: Fast HtH and in-place Cholesky solver.
+
+    .. todo: Pro tip in documentation: run ELM with dummy 1000 data samples and 1e+9 regularization,
+        This will test possible memory issues for workers without wasting your time on computing full HH.
+
+    .. todo: Option to keep full HH permanently somewhere at disk. Saves before the final step,
+        avoids failures from memory issues during Cholesky solver.
+
+    .. todo: GPU + batch Cholesky solver, for both ELM and LargeELM.
+
     Requirements
     ------------
         * Pandas
@@ -130,6 +150,37 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
         H_dask = da.concatenate(H_list, axis=1).rechunk(self.bsize_)
         return H_dask
 
+    def _compute(self, X, y, sync_every, HH=None, HY=None):
+        """Computing matrices HH and HY, the actually long part.
+
+        .. todo: actually distributed computations that scatter batches of data file names,
+            and reduce-sum the HH,HY matrices.
+        """
+
+        # processing files
+        for i, X_file, y_file in zip(range(len(X)), X, y):
+            X_dask = dd.read_parquet(X_file).to_dask_array(lengths=True)
+            Y_dask = dd.read_parquet(y_file).to_dask_array(lengths=True)
+            H_dask = self._project(X_dask)
+
+            if HH is None:  # first iteration
+                HH = da.dot(H_dask.transpose(), H_dask)
+                HY = da.dot(H_dask.transpose(), Y_dask)
+            else:
+                HH += da.dot(H_dask.transpose(), H_dask)
+                HY += da.dot(H_dask.transpose(), Y_dask)
+                if sync_every is not None and i % sync_every == 0:
+                    wait([HH, HY])
+
+            # synchronization
+            if sync_every is not None and i % sync_every == 0:
+                HH, HY = self.client_.persist([HH, HY])
+
+        # finishing solution
+        if sync_every is not None:
+            wait([HH, HY])
+        return HH, HY
+
     def _solve(self, HH, HY):
         """Compute output weights from HH and HY using Dask functionality.
         """
@@ -165,15 +216,17 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
         Model will use the set of features from the first file.
         Same features must have same names across the whole dataset.
 
-        .. todo:: Check what happens if features are in different order or missing.
+        .. todo: Check what happens if features are in different order or missing.
 
         Does **not** support sparse data.
 
-        .. todo:: Check if some sparse data would work.
+        .. todo: Check if some sparse data would work.
 
-        .. todo:: Check that sync_every does not affect results
+        .. todo: Check that sync_every does not affect results
 
-        .. todo:: Add single precision
+        .. todo: Add single precision
+
+        .. todo: Parquet file format examples in documentation
 
         Original features and bias are added to the end of data, for easier rechunk-merge. This way full chunks
         of hidden neuron outputs stay intact.
@@ -228,31 +281,7 @@ class LargeELMRegressor(_BaseELM, RegressorMixin):
             self._init_hidden_layers(X_sample)
             self._setup_dask_client()
 
-        # processing files
-        HH = None
-        HY = None
-        for i, X_file, y_file in zip(range(len(X)), X, y):
-            X_dask = dd.read_parquet(X_file).to_dask_array(lengths=True)
-            Y_dask = dd.read_parquet(y_file).to_dask_array(lengths=True)
-            H_dask = self._project(X_dask)
-
-            if HH is None:  # first iteration
-                HH = da.dot(H_dask.transpose(), H_dask)
-                HY = da.dot(H_dask.transpose(), Y_dask)
-            else:
-                HH += da.dot(H_dask.transpose(), H_dask)
-                HY += da.dot(H_dask.transpose(), Y_dask)
-                if sync_every is not None and i % sync_every == 0:
-                    wait([HH, HY])
-
-            # synchronization
-            if sync_every is not None and i % sync_every == 0:
-                HH, HY = self.client_.persist([HH, HY])
-
-        # finishing solution
-        if sync_every is not None:
-            wait([HH, HY])
-
+        HH, HY = self._compute(X, y, sync_every=sync_every)
         self.B = self._solve(HH, HY)
         self.is_fitted_ = True
         return self

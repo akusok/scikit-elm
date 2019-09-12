@@ -46,6 +46,7 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
 
         Sets `is_fitted_` to True.
         """
+        #todo: auto increase 'alpha' parameter if the solution fails
         B = sp.linalg.solve(self._XtX, self._XtY, assume_a='pos', overwrite_a=False, overwrite_b=False)
         self.coef_ = B[1:]
         self.intercept_ = B[0]

@@ -4,6 +4,7 @@ High-level Extreme Learning Machine modules
 
 import numpy as np
 import warnings
+from scipy.special import expit
 
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, clone
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
@@ -466,3 +467,20 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
         check_is_fitted(self, "is_fitted_")
         scores = super().predict(X)
         return self.label_binarizer_.inverse_transform(scores)
+
+    def predict_proba(self, X):
+        """Probability estimation for all classes.
+
+        Positive class probabilities are computed as
+        1. / (1. + np.exp(-self.decision_function(X)));
+        multiclass is handled by normalizing that over all classes.
+        """
+        check_is_fitted(self, "is_fitted_")
+        prob = super().predict(X)
+        expit(prob, out=prob)
+        if prob.ndim == 1:
+            return np.vstack([1 - prob, prob]).T
+        else:
+            # OvR normalization, like LibLinear's predict_probability
+            prob /= prob.sum(axis=1).reshape((prob.shape[0], -1))
+            return prob
