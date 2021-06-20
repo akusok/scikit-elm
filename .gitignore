@@ -71,3 +71,7 @@ target/
 
 # Mac hidden files
 .DS_Store
+
+# Notebook playground files to keep Git package smaller
+/notebooks/
+/data/
