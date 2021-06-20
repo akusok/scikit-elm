@@ -11,12 +11,178 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels, type_of_target
 
 from sklearn.preprocessing import LabelBinarizer, MultiLabelBinarizer
-from sklearn.exceptions import DataConversionWarning
+from sklearn.exceptions import DataConversionWarning, DataDimensionalityWarning
 
 from .hidden_layer import HiddenLayer
 from .solver_batch import BatchCholeskySolver
 from .utils import _dense
 
+from abc import abstractmethod
+from sklearn.metrics.pairwise import euclidean_distances
+
+warnings.simplefilter("ignore", DataDimensionalityWarning)
+
+
+
+
+class SLFNDelegate:
+    @abstractmethod
+    def project(self, X): pass
+
+
+class DenseSLFN(SLFNDelegate)
+    def __init__(self, W, ufunc):
+        self.W = W
+        self.ufunc = ufunc
+        
+    def project(self, X):
+        H = self.ufunc(X @ self.W)
+        return H
+
+
+class PairwiseSLFN(SLFNDelegate):
+    def __init__(self, X, k):
+        self.basis = X[:k]
+
+    def project(self, X):
+        H = euclidean_distances(X, self.basis)
+        return H
+
+
+class OriginalFeaturesSLFN(SLFNDelegate):
+    def project(self, X):
+        return X
+
+
+
+
+
+class SolverDelegate:
+    @abstractmethod
+    def solve(self, H, y): pass
+
+
+class BasicSolver(SolverDelegate):
+    def solve(self, H, y):
+        B = np.linalg.pinv(H) @ y
+        return B
+
+
+class RidgeSolver(SolverDelegate):
+    def __init__(self, alpha):
+        self.alpha = alpha
+
+    def solve(self, H, y):
+        HH = H.T @ H + self.alpha * np.eye(H.shape[1])
+        Hy = H.T @ y
+        B = np.linalg.lstsq(HH, Hy)
+        return B
+
+
+
+
+class ELM:
+    def __init__(self, SLFNs, solver):
+        self.SLFNs = SLFNs
+        self.solver = solver
+        self.B = None
+
+    def fit(self, X, y):
+        H = np.hstack((slfn.project(X) for slfn in self.SLFNs))
+        B = self.solver.solve(H, y)
+        self.B = B
+        
+    def predict(self, X):
+        if self.B is None:
+            return RuntimeError("Model is not fit")
+        H = np.hstack((slfn.project(X) for slfn in self.SLFNs))
+        yh = H @ self.B
+        return yh
+
+
+
+
+class ScikitELM:
+    """Wrapper around ELM functions that makes them compatible with Scikit-Learn.
+    """
+
+    def __init__(self, alpha=1e-7, batch_size=None, include_original_features=False,
+                 n_neurons=None, ufunc="tanh", density=None, pairwise_metric=None,
+                 random_state=None):
+        """Scikit-ELM's version of __init__, that only saves input parameters and does nothing else.
+        """
+        self.alpha = alpha
+        self.n_neurons = n_neurons
+        self.batch_size = batch_size
+        self.ufunc = ufunc
+        self.include_original_features = include_original_features
+        self.density = density
+        self.pairwise_metric = pairwise_metric
+        self.random_state = random_state
+
+    def _init_components(self, X):
+        """Create composition objects, and init ELM model.
+        """
+
+        # only one type of neurons
+        if not hasattr(self.n_neurons, '__iter__'):
+            slfn = HiddenLayer(n_neurons=self.n_neurons, density=self.density, ufunc=self.ufunc,
+                               pairwise_metric=self.pairwise_metric, random_state=self.random_state)
+            slfn.fit(X)
+            SLFNs = (slfn, )
+
+        # several different types of neurons
+        else:
+            k = len(self.n_neurons)
+
+            # fix default values
+            ufuncs = self.ufunc
+            if isinstance(ufuncs, str) or not hasattr(ufuncs, "__iter__"):
+                ufuncs = [ufuncs] * k
+
+            densities = self.density
+            if densities is None or not hasattr(densities, "__iter__"):
+                densities = [densities] * k
+
+            pw_metrics = self.pairwise_metric
+            if pw_metrics is None or isinstance(pw_metrics, str):
+                pw_metrics = [pw_metrics] * k
+
+            if not k == len(ufuncs) == len(densities) == len(pw_metrics):
+                raise ValueError("Inconsistent parameter lengths for model with {} different types of neurons.\n"
+                                 "Set 'ufunc', 'density' and 'pairwise_distances' by lists "
+                                 "with {} elements, or leave the default values.".format(k, k))
+
+            SLFNs = []
+            for n_neurons, ufunc, density, metric in zip(self.n_neurons, ufuncs, densities, pw_metrics):
+                slfn = HiddenLayer(n_neurons=n_neurons, density=density, ufunc=ufunc,
+                                   pairwise_metric=metric, random_state=self.random_state)
+                slfn.fit(X)
+                SLFNs.append(slfn)
+
+        solver = RidgeSolver(self.alpha)
+        self.model_ = ELM(SLFNs, solver)
+
+    def _reset(self):
+        runtime_attributes = ('n_features_', 'model_', 'is_fitted_', 'label_binarizer_')
+        [delattr(self, attr) for attr in runtime_attributes if hasattr(self, attr)]
+
+    def fit(self, X, y):
+        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
+        if len(y.shape) > 1 and y.shape[1] == 1:
+            msg = ("A column-vector y was passed when a 1d array was expected. "
+                   "Please change the shape of y to (n_samples, ), for example using ravel().")
+            warnings.warn(msg, DataConversionWarning)
+
+        n_samples, n_features = X.shape
+        if hasattr(self, 'n_features_') and self.n_features_ != n_features:
+            raise ValueError('Shape of input is different from what was seen in `fit`')
+
+        self.model_.fit(X, y)
+
+
+        
+        
 
 
 class _BaseELM(BaseEstimator):
@@ -24,6 +190,7 @@ class _BaseELM(BaseEstimator):
     def __init__(self, alpha=1e-7, batch_size=None, include_original_features=False,
                  n_neurons=None, ufunc="tanh", density=None, pairwise_metric=None,
                  random_state=None):
+
         self.alpha = alpha
         self.n_neurons = n_neurons
         self.batch_size = batch_size
@@ -75,7 +242,18 @@ class _BaseELM(BaseEstimator):
                 self.hidden_layers_.append(hl)
 
     def _reset(self):
-        [delattr(self, attr) for attr in ('n_features_', 'solver_', 'hidden_layers_', 'is_fitted_') if hasattr(self, attr)]
+        [delattr(self, attr) for attr in ('n_features_', 'solver_', 'hidden_layers_', 'is_fitted_', 'label_binarizer_') if hasattr(self, attr)]
+
+    @property
+    def n_neurons_(self):
+        if not hasattr(self, 'hidden_layers_'):
+            return None
+
+        neurons_count = sum([hl.n_neurons_ for hl in self.hidden_layers_])
+        if self.include_original_features:
+            neurons_count += self.n_features_
+
+        return neurons_count
 
     @property
     def coef_(self):
@@ -85,11 +263,23 @@ class _BaseELM(BaseEstimator):
     def intercept_(self):
         return self.solver_.intercept_
 
-    def partial_fit(self, X, y=None, compute_output_weights=True):
+    def partial_fit(self, X, y=None, forget=False, compute_output_weights=True):
         """Update model with a new batch of data.
 
-        Output weight computation can be temporary turned off for faster processing. This will mark model as
-        not fit. Enable `compute_output_weights` in the final call to `partial_fit`.
+        |method_partial_fit|
+
+        .. |method_partial_fit| replace:: Output weight computation can be temporary turned off
+            for faster processing. This will mark model as not fit. Enable `compute_output_weights`
+            in the final call to `partial_fit`.
+
+        .. |param_forget| replace:: Performs a negative update, effectively removing the information
+            given by training samples from the model. Output weights need to be re-computed after forgetting
+            data. Forgetting data that have not been learned before leads to unpredictable results.
+
+        .. |param_compute_output_weights| replace::  Whether to compute new output weights
+            (coef_, intercept_). Disable this in intermediate `partial_fit`
+            steps to run computations faster, then enable in the last call to compute the new solution.
+
 
         Parameters
         ----------
@@ -99,9 +289,11 @@ class _BaseELM(BaseEstimator):
         y : array-like, shape=[n_samples, n_targets]
             Training targets
 
+        forget : boolean, default False
+            |param_forget|
+
         compute_output_weights : boolean, optional, default True
-            Whether to compute new output weights (coef_, intercept_). Disable this in intermediate `partial_fit`
-            steps to run computations faster, then enable in the last call to compute the new solution.
+            |param_compute_output_weights|
 
             .. Note::
                 Solution can be updated without extra data by setting `X=None` and `y=None`.
@@ -129,7 +321,6 @@ class _BaseELM(BaseEstimator):
             return self
 
         X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
-
         if len(y.shape) > 1 and y.shape[1] == 1:
             msg = ("A column-vector y was passed when a 1d array was expected. "
                    "Please change the shape of y to (n_samples, ), for example using ravel().")
@@ -154,7 +345,7 @@ class _BaseELM(BaseEstimator):
         if self.bsize_ >= n_samples:
             H = [hl.transform(X) for hl in self.hidden_layers_]
             H = np.hstack(H if not self.include_original_features else [_dense(X)] + H)
-            self.solver_.partial_fit(H, y, compute_output_weights=False)
+            self.solver_.partial_fit(H, y, forget=forget, compute_output_weights=False)
 
         else:  # batch processing
             for b_start in range(0, n_samples, self.bsize_):
@@ -164,7 +355,7 @@ class _BaseELM(BaseEstimator):
 
                 b_H = [hl.transform(b_X) for hl in self.hidden_layers_]
                 b_H = np.hstack(b_H if not self.include_original_features else [_dense(b_X)] + b_H)
-                self.solver_.partial_fit(b_H, b_y, compute_output_weights=False)
+                self.solver_.partial_fit(b_H, b_y, forget=forget, compute_output_weights=False)
 
         # output weights if needed
         if compute_output_weights:
@@ -179,47 +370,47 @@ class _BaseELM(BaseEstimator):
 
     def fit(self, X, y=None):
         """Reset model and fit on the given data.
-        
+
         Parameters
         ----------
         X : {array-like, sparse matrix}, shape (n_samples, n_features)
             Training data samples.
-        
+
         y : array-like, shape (n_samples,) or (n_samples, n_outputs)
             Target values used as real numbers.
 
         Returns
         -------
         self : object
-            Returns self.         
+            Returns self.
         """
-        
+
         #todo: add X as bunch of files support
-        
+
         self._reset()
         self.partial_fit(X, y)
         return self
 
     def predict(self, X):
         """Predict real valued outputs for new inputs X.
-        
+
         Parameters
         ----------
         X : {array-like, sparse matrix}, shape (n_samples, n_features)
             Input data samples.
-            
+
         Returns
         -------
         y : ndarray, shape (n_samples,) or (n_samples, n_outputs)
-            Predicted outputs for inputs X. 
-            
+            Predicted outputs for inputs X.
+
             .. attention::
-            
-                :mod:`predict` always returns a dense matrix of predicted outputs -- unlike 
-                in :meth:`fit`, this may cause memory issues at high number of outputs 
+
+                :mod:`predict` always returns a dense matrix of predicted outputs -- unlike
+                in :meth:`fit`, this may cause memory issues at high number of outputs
                 and very high number of samples. Feed data by smaller batches in such case.
         """
-        
+
         X = check_array(X, accept_sparse=True)
         check_is_fitted(self, "is_fitted_")
 
@@ -353,7 +544,7 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
     :param classes: Set of classes to consider in the model; can be expanded at runtime.
                     Samples of other classes will have their output set to zero.
     :param solver: Solver to use, "default" for build-in Least Squares or "ridge" for Ridge regression
-    
+
 
     Example descr...
 
@@ -366,7 +557,7 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
     classes_ : ndarray, shape (n_classes,)
         The classes seen at :meth:`fit`.
     """
-    
+
     def __init__(self, classes=None, alpha=1e-7, batch_size=None, include_original_features=False, n_neurons=None,
                  ufunc="tanh", density=None, pairwise_metric=None, random_state=None):
         super().__init__(alpha, batch_size, include_original_features, n_neurons, ufunc, density, pairwise_metric,
@@ -412,13 +603,30 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
         if hasattr(self.solver_, 'is_fitted_'):
             del self.solver_.is_fitted_
 
-    def partial_fit(self, X, y=None, classes=None, update_classes=False, compute_output_weights=True):
-        """Update classifier with new data.
+    def partial_fit(self, X, y=None, forget=False, update_classes=False, compute_output_weights=True):
+        """Update classifier with a new batch of data.
 
-        :param classes: ignored
-        :param update_classes: Includes new classes from 'y' into the model;
-                               assumes they are set to 0 in all previous targets.
+        |method_partial_fit|
+
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape=[n_samples, n_features]
+            Training input samples
+
+        y : array-like, shape=[n_samples, n_targets]
+            Training targets
+
+        forget : boolean, default False
+            |param_forget|
+
+        update_classes : boolean, default False
+            Include new classes from `y` into the model, assuming they were 0 in all previous samples.
+
+        compute_output_weights : boolean, optional, default True
+            |param_compute_output_weights|
         """
+
+        #todo: Warning on strongly non-normalized data
 
         X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
 
@@ -433,7 +641,10 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
             self._update_classes(y)
 
         y_numeric = self.label_binarizer_.transform(y)
-        super().partial_fit(X, y_numeric, compute_output_weights=compute_output_weights)
+        if len(y_numeric.shape) > 1 and y_numeric.shape[1] == 1:
+            y_numeric = y_numeric[:, 0]
+
+        super().partial_fit(X, y_numeric, forget=forget, compute_output_weights=compute_output_weights)
         return self
 
     def fit(self, X, y=None):
@@ -444,8 +655,7 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
         self : object
             Returns self.
         """
-        if hasattr(self, "label_binarizer_"):
-            del self.label_binarizer_
+        self._reset()
         self.partial_fit(X, y, compute_output_weights=True)
         return self
 
@@ -462,8 +672,8 @@ class ELMClassifier(_BaseELM, ClassifierMixin):
         y : ndarray, shape (n_samples,) or (n_samples, n_outputs)
             Returns one most probable class for multi-class problem, or
             a binary vector of all relevant classes for multi-label problem.
-        """    
-            
+        """
+
         check_is_fitted(self, "is_fitted_")
         scores = super().predict(X)
         return self.label_binarizer_.inverse_transform(scores)
