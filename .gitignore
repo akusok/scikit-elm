@@ -75,3 +75,4 @@ target/
 # Notebook playground files to keep Git package smaller
 /notebooks/
 /data/
+/Untitled.ipynb

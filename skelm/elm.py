@@ -2,104 +2,74 @@
 High-level Extreme Learning Machine modules
 """
 
+from __future__ import annotations
+
 import numpy as np
 import warnings
 from scipy.special import expit
+from typing import Protocol, Iterable
+from numpy.typing import ArrayLike
+from abc import ABC, abstractmethod
 
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, clone
 from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
-from sklearn.utils.multiclass import unique_labels, type_of_target
+from sklearn.utils.multiclass import type_of_target
 
 from sklearn.preprocessing import LabelBinarizer, MultiLabelBinarizer
 from sklearn.exceptions import DataConversionWarning, DataDimensionalityWarning
 
-from .hidden_layer import HiddenLayer
+from .hidden_layer import HiddenLayer, SLFN
 from .solver_batch import BatchCholeskySolver
+from .solver import Solver
 from .utils import _dense
-
-from abc import abstractmethod
-from sklearn.metrics.pairwise import euclidean_distances
 
 warnings.simplefilter("ignore", DataDimensionalityWarning)
 
 
+class ELM(Protocol):
+    """Extreme Learning Machine protocol.
 
+    Basic operation is to transform data using each SLFN, stack those features together,
+    then compute weights/intercepts of an output linear model with a solver.
+    """
 
-class SLFNDelegate:
+    SLFNs: Iterable[SLFN]  # ELM has one or several types of hidden neurons
+    solver: Solver  # ELM has an output layer solver
+
     @abstractmethod
-    def project(self, X): pass
+    def fit(self, X: ArrayLike, y: ArrayLike) -> ELM:
+        """Fit an ELM, return self for command chaining."""
 
-
-class DenseSLFN(SLFNDelegate)
-    def __init__(self, W, ufunc):
-        self.W = W
-        self.ufunc = ufunc
-        
-    def project(self, X):
-        H = self.ufunc(X @ self.W)
-        return H
-
-
-class PairwiseSLFN(SLFNDelegate):
-    def __init__(self, X, k):
-        self.basis = X[:k]
-
-    def project(self, X):
-        H = euclidean_distances(X, self.basis)
-        return H
-
-
-class OriginalFeaturesSLFN(SLFNDelegate):
-    def project(self, X):
-        return X
-
-
-
-
-
-class SolverDelegate:
     @abstractmethod
-    def solve(self, H, y): pass
+    def predict(self, X: ArrayLike) -> ArrayLike:
+        """Predict outputs for new inputs."""
+
+    @abstractmethod
+    def partial_fit(self, X: ArrayLike, y: ArrayLike, solve: bool, forget: bool) -> None:
+        """Update ELM model by adding or removing training data samples.
+
+        Solving can be temporary disabled to speed up processing of multiple data batches.
+        """
 
 
-class BasicSolver(SolverDelegate):
-    def solve(self, H, y):
-        B = np.linalg.pinv(H) @ y
-        return B
-
-
-class RidgeSolver(SolverDelegate):
-    def __init__(self, alpha):
-        self.alpha = alpha
-
-    def solve(self, H, y):
-        HH = H.T @ H + self.alpha * np.eye(H.shape[1])
-        Hy = H.T @ y
-        B = np.linalg.lstsq(HH, Hy)
-        return B
-
-
-
-
-class ELM:
-    def __init__(self, SLFNs, solver):
+class BasicELM(ELM):
+    def __init__(self, SLFNs: Iterable[SLFN], solver: Solver):
         self.SLFNs = SLFNs
         self.solver = solver
-        self.B = None
 
     def fit(self, X, y):
-        H = np.hstack((slfn.project(X) for slfn in self.SLFNs))
-        B = self.solver.solve(H, y)
-        self.B = B
-        
+        H = np.hstack((slfn.transform(X) for slfn in self.SLFNs))
+        self.solver.fit(H, y)
+
     def predict(self, X):
-        if self.B is None:
+        if self.solver.coef is None:
             return RuntimeError("Model is not fit")
-        H = np.hstack((slfn.project(X) for slfn in self.SLFNs))
-        yh = H @ self.B
+        H = np.hstack((slfn.transform(X) for slfn in self.SLFNs))
+        yh = H @ self.solver.coef + self.solver.intercept
         return yh
 
-
+    def partial_fit(self, X: ArrayLike, y: ArrayLike, solve: bool, forget: bool) -> None:
+        raise NotImplementedError("Basic ELM does not support partial fit")
 
 
 class ScikitELM:
@@ -160,8 +130,8 @@ class ScikitELM:
                 slfn.fit(X)
                 SLFNs.append(slfn)
 
-        solver = RidgeSolver(self.alpha)
-        self.model_ = ELM(SLFNs, solver)
+        solver = BatchCholeskySolver(self.alpha)
+        self.model_ = BasicELM(SLFNs, solver)
 
     def _reset(self):
         runtime_attributes = ('n_features_', 'model_', 'is_fitted_', 'label_binarizer_')
@@ -179,6 +149,8 @@ class ScikitELM:
             raise ValueError('Shape of input is different from what was seen in `fit`')
 
         self.model_.fit(X, y)
+        self.n_features_ = X.shape
+        self.is_fitted_ = True
 
 
         
@@ -303,16 +275,10 @@ class _BaseELM(BaseEstimator):
                 ... model.partial_fit(X_2, y_2)
                 ... model.partial_fit(X_3, y_3)    # doctest: +SKIP
 
-            Faster, option 1:
+            Faster:
                 >>> model.partial_fit(X_1, y_1, compute_output_weights=False)
                 ... model.partial_fit(X_2, y_2, compute_output_weights=False)
                 ... model.partial_fit(X_3, y_3)    # doctest: +SKIP
-
-            Faster, option 2:
-                >>> model.partial_fit(X_1, y_1, compute_output_weights=False)
-                ... model.partial_fit(X_2, y_2, compute_output_weights=False)
-                ... model.partial_fit(X_3, y_3, compute_output_weights=False)
-                ... model.partial_fit(X=None, y=None)    # doctest: +SKIP
         """
         # compute output weights only
         if X is None and y is None and compute_output_weights:

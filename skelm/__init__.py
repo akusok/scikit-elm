@@ -8,5 +8,4 @@ from .utils import PairwiseRandomProjection
 from ._version import __version__
 
 __all__ = ['ELMRegressor', 'ELMClassifier', 'HiddenLayer',
-           'LargeELMRegressor',
-           'BatchCholeskySolver', 'PairwiseRandomProjection', '__version__']
+           'LargeELMRegressor', 'BatchCholeskySolver', 'PairwiseRandomProjection', '__version__']

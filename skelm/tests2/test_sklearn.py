@@ -10,7 +10,7 @@ class MultiTaskELMClassifier(ELMClassifier):
     pass
 
 
-@pytest.mark.parametrize("method", [MultiTaskELMRegressor, MultiTaskELMClassifier, BatchCholeskySolver, PairwiseRandomProjection])
+@pytest.mark.parametrize("method", [MultiTaskELMRegressor, MultiTaskELMClassifier, BatchCholeskySolver])
 def test_DenseData_ScikitLearnCompatibility(method):
     check_estimator(method)
 

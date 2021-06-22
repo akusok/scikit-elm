@@ -31,13 +31,14 @@ CLASSIFIERS = ['Intended Audience :: Science/Research',
                'Operating System :: POSIX',
                'Operating System :: Unix',
                'Operating System :: MacOS',
-               'Programming Language :: Python :: 3.6',
                'Programming Language :: Python :: 3.7',
-               'Programming Language :: Python :: 3.8']
+               'Programming Language :: Python :: 3.8',
+               'Programming Language :: Python :: 3.9',
+               'Programming Language :: Python :: 3.10']
+
 EXTRAS_REQUIRE = {
     'tests': [
-        'pytest',
-        'pytest-cov'],
+        'unittest',],
     'docs': [
         'sphinx',
         'sphinx-gallery',
