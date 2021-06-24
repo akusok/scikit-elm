@@ -7,7 +7,7 @@ from sklearn.utils.estimator_checks import check_estimator
 
 from skelm.hidden_layer import RandomProjectionSLFN
 from skelm.solver import BasicSolver, BatchRidgeSolver
-from skelm.elm import BasicELM, ScikitELM
+from skelm.elm import BasicELM, BatchELM, ScikitELM
 
 
 class TestScikitELM(unittest.TestCase):
@@ -54,13 +54,13 @@ class TestBasicELM(unittest.TestCase):
     def test_BatchUpdate_NonBatchSolver_Raises(self):
         simple_hidden = RandomProjectionSLFN(self.X, 10)
         simple_solver = BasicSolver()
-        elm = BasicELM([simple_hidden], simple_solver)
-        with self.assertRaises(RuntimeError):
+        elm = BatchELM([simple_hidden], simple_solver)
+        with self.assertRaises(AttributeError):
             elm.partial_fit(self.X, self.y)
 
     def test_BatchUpdate_BatchSolver_Works(self):
         simple_hidden = RandomProjectionSLFN(self.X, 10)
         batch_solver = BatchRidgeSolver()
-        elm = BasicELM([simple_hidden, ], batch_solver)
+        elm = BatchELM([simple_hidden, ], batch_solver)
         elm.partial_fit(self.X, self.y)
 

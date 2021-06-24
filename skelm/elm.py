@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import warnings
 from scipy.special import expit
-from typing import Protocol, Iterable, cast
+from typing import Protocol, Iterable, cast, Optional
 from numpy.typing import ArrayLike
 
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, clone
@@ -19,37 +19,48 @@ from sklearn.exceptions import DataConversionWarning, DataDimensionalityWarning
 
 from .hidden_layer import HiddenLayer, SLFN, CopyInputsSLFN
 from .solver_batch import BatchCholeskySolver
-from .solver import Solver, BatchSolver, CholeskySolver
-from .utils import _dense
+from .solver import Solver, BatchSolver
 
 warnings.simplefilter("ignore", DataDimensionalityWarning)
 
 
-class ELM(Protocol):
+class ELMProtocol(Protocol):
     """Extreme Learning Machine protocol.
 
     Basic operation is to transform data using each SLFN, stack those features together,
     then compute weights/intercepts of an output linear model with a solver.
     """
-
     SLFNs: Iterable[SLFN]  # ELM has one or several types of hidden neurons
     solver: Solver  # ELM has an output layer solver
-    is_fitted: bool  # whether an ELM model is ready to predict
+    is_fitted: False  # whether an ELM model is ready to predict
 
-    def fit(self, X: ArrayLike, y: ArrayLike) -> ELM:
+    @property
+    def n_neurons(self) -> int:
+        """Number of neurons in ELM model"""
+        return 0
+
+    def fit(self, X: ArrayLike, y: ArrayLike) -> ELMProtocol:
         """Fit an ELM, return self for command chaining."""
 
     def predict(self, X: ArrayLike) -> ArrayLike:
         """Predict outputs for new inputs."""
 
-    def partial_fit(self, X: ArrayLike, y: ArrayLike, solve: bool, forget: bool) -> ELM:
+
+class BatchELMProtocol(ELMProtocol, Protocol):
+    solver: BatchSolver  # batch ELM needs a batch solver
+
+    def partial_fit(self, X: ArrayLike, y: ArrayLike, solve: bool, forget: bool) -> BatchELMProtocol:
         """Update ELM model by adding or removing training data samples.
 
         Solving can be temporary disabled to speed up processing of multiple data batches.
         """
 
+    def compute_output_weights(self) -> None:
+        """Compute solution from internally stored data."""
 
-class BasicELM:
+
+class BasicELM(ELMProtocol):
+
     def __init__(self, SLFNs: Iterable[SLFN], solver: Solver):
         self.SLFNs = SLFNs
         self.solver = solver
@@ -73,22 +84,21 @@ class BasicELM:
         yh = H @ self.solver.coef_ + self.solver.intercept_
         return yh
 
-    def partial_fit(self, X, y, compute_output_weights=True, forget=False) -> BasicELM:
-        if hasattr(self.solver, "partial_fit"):
-            batch_solver = cast(BatchSolver, self.solver)  # our solver has batch mode
-        else:
-            raise RuntimeError("Current solver does not support partial fit: {}".format(self.solver))
 
+class BatchELM(BasicELM, BatchELMProtocol):
+
+    def __init__(self, SLFNs: Iterable[SLFN], solver: BatchSolver):
+        super().__init__(SLFNs, solver)
+        self.solver = solver  # using batch solver instead of BasicELM's simple solver
+
+    def partial_fit(self, X, y, compute_output_weights=True, forget=False) -> BatchELM:
         H = np.hstack([slfn.transform(X) for slfn in self.SLFNs])
-        batch_solver.partial_fit(H, y, compute_output_weights=True)
+        self.solver.partial_fit(H, y, compute_output_weights=True)
         self.is_fitted = True
         return self
 
     def compute_output_weights(self):
-        if not hasattr(self.solver, "compute_output_weights"):
-            raise RuntimeError("Current solver does not support partial fit: {}".format(self.solver))
-
-        cast(BatchSolver, self.solver).compute_output_weights()
+        self.solver.compute_output_weights()
         self.is_fitted = True
 
 
@@ -161,10 +171,9 @@ class ScikitELM(BaseEstimator, RegressorMixin):
             SLFNs.append(CopyInputsSLFN(X))
 
         solver = BatchCholeskySolver(self.alpha)
-        self.model_ = BasicELM(SLFNs, solver)
+        self.model_ = BatchELM(SLFNs, solver)
 
     def _reset(self):
-        #TODO: delete 'label_binarizer_' in ELM Classifier
         runtime_attributes = ('n_features_', 'model_', 'is_fitted_')
         [delattr(self, attr) for attr in runtime_attributes if hasattr(self, attr)]
 
@@ -480,6 +489,12 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
 
     def _get_tags(self):
         return {"multioutput": True, "multilabel": True}
+
+    def _reset(self):
+        if hasattr(self, 'label_binarizer_'):
+            delattr(self, 'label_binarizer_')
+        super()._reset()
+
 
     def _update_classes(self, y):
         if not hasattr(self.model_.solver, "partial_fit"):

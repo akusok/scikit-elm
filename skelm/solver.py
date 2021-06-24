@@ -14,14 +14,14 @@ warnings.simplefilter("ignore", LinAlgWarning)
 class Solver(Protocol):
     """Stateful solver that updates and keeps its liner model coefficient and intercept."""
 
-    coef_: Optional[ArrayLike] = None
-    intercept_: Optional[ArrayLike] = None
+    coef_: Optional[ArrayLike]
+    intercept_: Optional[ArrayLike]
 
     def fit(self, X: ArrayLike, y: ArrayLike) -> Solver:
         """Compute coefficient and intercept of a solver."""
 
 
-class BatchSolver(Protocol):
+class BatchSolver(Solver, Protocol):
     """Protocol for batch solvers."""
 
     def partial_fit(self, X: ArrayLike, y: ArrayLike, compute_output_weights=True, forget=False) -> BatchSolver:
@@ -66,7 +66,7 @@ class BatchRidgeSolver:
     def fit(self, X, y):
         self.XX = X.T @ X + self.alpha * np.eye(X.shape[1])
         self.Xy = X.T @ y
-        self.solve()
+        self.compute_output_weights()
 
     def compute_output_weights(self):
         self.coef_ = np.linalg.lstsq(self.XX, self.Xy, rcond=-1)[0]
@@ -180,9 +180,9 @@ class CholeskySolver:
 
     def partial_fit(self, X, y, compute_output_weights=True, forget=False):
         if forget:
-            self.batch_forget(X, y, solve)
+            self.batch_forget(X, y, compute_output_weights)
         else:
-            self.batch_update(X, y, solve)
+            self.batch_update(X, y, compute_output_weights)
 
     def batch_update(self, X, y, compute_output_weights=True):
         if self.XtX is None:
