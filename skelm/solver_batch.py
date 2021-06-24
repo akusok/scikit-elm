@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .solver import Solver, CholeskySolver
+from .solver import CholeskySolver
 
 import warnings
 from numpy.typing import ArrayLike
@@ -16,7 +16,7 @@ from scipy.linalg import LinAlgWarning
 warnings.simplefilter("ignore", LinAlgWarning)
 
 
-class BatchCholeskySolver(Solver, BaseEstimator, RegressorMixin):
+class BatchCholeskySolver(BaseEstimator, RegressorMixin):
 
     def __init__(self, alpha: float = 1e-7):
         self.alpha = alpha
@@ -40,19 +40,19 @@ class BatchCholeskySolver(Solver, BaseEstimator, RegressorMixin):
 
     @property
     def coef_(self):
-        return self.solver_.coef
+        return self.solver_.coef_
 
     @coef_.setter
     def coef_(self, value):
-        self.solver_.coef = value
+        self.solver_.coef_ = value
 
     @property
     def intercept_(self):
-        return self.solver_.intercept
+        return self.solver_.intercept_
 
     @intercept_.setter
     def intercept_(self, value):
-        self.solver_.intercept = value
+        self.solver_.intercept_ = value
 
     def fit(self, X, y):
         """Solves an L2-regularized linear system like Ridge regression, overwrites any previous solutions.
@@ -95,7 +95,7 @@ class BatchCholeskySolver(Solver, BaseEstimator, RegressorMixin):
 
         # solution only
         if X is None and y is None and compute_output_weights:
-            self.solver_.solve()
+            self.solver_.compute_output_weights()
             self.is_fitted_ = True
             return self
 
@@ -108,9 +108,9 @@ class BatchCholeskySolver(Solver, BaseEstimator, RegressorMixin):
 
         # do the model update + solution
         if forget:
-            self.solver_.batch_forget(X, y, solve=compute_output_weights)
+            self.solver_.batch_forget(X, y, compute_output_weights=compute_output_weights)
         else:
-            self.solver_.batch_update(X, y, solve=compute_output_weights)
+            self.solver_.batch_update(X, y, compute_output_weights=compute_output_weights)
         self.n_features_in_ = X.shape[1]
 
         # reset "is_fitted" status if no solution requested
@@ -121,7 +121,10 @@ class BatchCholeskySolver(Solver, BaseEstimator, RegressorMixin):
         self.is_fitted_ = True
         return self
 
+    def compute_output_weights(self):
+        self.solver_.compute_output_weights()
+
     def predict(self, X) -> ArrayLike:
         check_is_fitted(self, 'is_fitted_')
         X = check_array(X, accept_sparse=True)
-        return safe_sparse_dot(X, self.solver_.coef, dense_output=True) + self.solver_.intercept
+        return safe_sparse_dot(X, self.solver_.coef_, dense_output=True) + self.solver_.intercept_

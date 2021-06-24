@@ -4,7 +4,6 @@ import numpy as np
 import scipy as sp
 import warnings
 from typing import Protocol, Optional
-from abc import abstractmethod
 from numpy.typing import ArrayLike
 from sklearn.utils.extmath import safe_sparse_dot
 
@@ -15,23 +14,34 @@ warnings.simplefilter("ignore", LinAlgWarning)
 class Solver(Protocol):
     """Stateful solver that updates and keeps its liner model coefficient and intercept."""
 
-    coef: Optional[ArrayLike] = None
-    intercept: Optional[ArrayLike] = None
+    coef_: Optional[ArrayLike] = None
+    intercept_: Optional[ArrayLike] = None
 
-    @abstractmethod
-    def fit(self, X: ArrayLike, y: ArrayLike) -> None:
+    def fit(self, X: ArrayLike, y: ArrayLike) -> Solver:
         """Compute coefficient and intercept of a solver."""
 
 
-class BasicSolver(Solver):
-    intercept = np.array([0])
+class BatchSolver(Protocol):
+    """Protocol for batch solvers."""
+
+    def partial_fit(self, X: ArrayLike, y: ArrayLike, compute_output_weights=True, forget=False) -> BatchSolver:
+        """Add or subtract new data, optionally update solution."""
+
+    def compute_output_weights(self) -> None:
+        """Update solution from currently stored data."""
+
+
+class BasicSolver:
+    coef_ = None
+    intercept_ = np.array([0])
 
     def fit(self, X, y):
-        self.coef = np.linalg.pinv(X) @ y
+        self.coef_ = np.linalg.pinv(X) @ y
 
 
-class RidgeSolver(Solver):
-    intercept = np.array([0])
+class RidgeSolver:
+    coef_ = None
+    intercept_ = np.array([0])
 
     def __init__(self, alpha):
         self.alpha = alpha
@@ -39,25 +49,67 @@ class RidgeSolver(Solver):
     def fit(self, X, y):
         XX = X.T @ X + self.alpha * np.eye(X.shape[1])
         Xy = X.T @ y
-        self.coef = np.linalg.lstsq(XX, Xy)
+        self.coef_ = np.linalg.lstsq(XX, Xy, rcond=-1)[0]
 
 
-class CholeskySolver(Solver):
+class BatchRidgeSolver:
+    """Stateful batch solver, can add or remove training data."""
+
+    coef_ = None
+    intercept_ = np.array([0], ndmin=2)
+    XX = None
+    Xy = None
+
+    def __init__(self, alpha=1e-3):
+        self.alpha = alpha
+
+    def fit(self, X, y):
+        self.XX = X.T @ X + self.alpha * np.eye(X.shape[1])
+        self.Xy = X.T @ y
+        self.solve()
+
+    def compute_output_weights(self):
+        self.coef_ = np.linalg.lstsq(self.XX, self.Xy, rcond=-1)[0]
+
+    def partial_fit(self, X, y, compute_output_weights=True, forget=False):
+
+        self.coef = None  # invalidate old solution
+        XX_delta = X.T @ X
+        Xy_delta = X.T @ y
+
+        if self.XX is None:
+            d = X.shape[1]
+            d_out = y.shape[1]
+            self.XX = self.alpha * np.eye(d)
+            self.Xy = np.zeros((d, d_out))
+
+        if forget:
+            self.XX -= XX_delta
+            self.Xy -= Xy_delta
+        else:
+            self.XX += XX_delta
+            self.Xy += Xy_delta
+
+        if compute_output_weights:
+            self.compute_output_weights()
+
+
+class CholeskySolver:
 
     def __init__(self, alpha=1e-7):
         self.alpha: float = alpha
         self.XtX = None
         self.XtY = None
-        self.coef = None
-        self.intercept = None
+        self.coef_ = None
+        self.intercept_ = None
 
     def _reset_model(self):
         """Clean temporary data storage.
         """
         self.XtX = None
         self.XtY = None
-        self.coef = None
-        self.intercept = None
+        self.coef_ = None
+        self.intercept_ = None
 
     def _init_model(self, X, y):
         """Initialize model storage.
@@ -105,10 +157,10 @@ class CholeskySolver(Solver):
             self.XtY[1:] -= X.T @ y
 
         # invalidate previous solution
-        self.coef = None
-        self.intercept = None
+        self.coef_ = None
+        self.intercept_ = None
 
-    def solve(self):
+    def compute_output_weights(self):
         """Compute solution from model with some data in it.
 
         Second stage of solution (X'X)B = X'Y that uses a fast Cholesky decomposition approach.
@@ -117,31 +169,37 @@ class CholeskySolver(Solver):
             raise RuntimeError("Attempting to solve uninitialized model")
 
         B = sp.linalg.solve(self.XtX, self.XtY, assume_a='sym', overwrite_a=False, overwrite_b=False)
-        self.coef = B[1:]
-        self.intercept = B[0]
+        self.coef_ = B[1:]
+        self.intercept_ = B[0]
 
     def fit(self, X, y):
         self._reset_model()
         self._init_model(X, y)
         self._update_model(X, y)
-        self.solve()
+        self.compute_output_weights()
 
-    def batch_update(self, X, y, solve=True):
+    def partial_fit(self, X, y, compute_output_weights=True, forget=False):
+        if forget:
+            self.batch_forget(X, y, solve)
+        else:
+            self.batch_update(X, y, solve)
+
+    def batch_update(self, X, y, compute_output_weights=True):
         if self.XtX is None:
             self._init_model(X, y)
         else:
             self._validate_model(X, y)
 
         self._update_model(X, y)
-        if solve:
-            self.solve()
+        if compute_output_weights:
+            self.compute_output_weights()
 
-    def batch_forget(self, X, y, solve=True):
+    def batch_forget(self, X, y, compute_output_weights=True):
         if self.XtX is None:
             raise RuntimeError("Attempting to subtract data from uninitialized model")
         else:
             self._validate_model(X, y)
 
         self._update_model(X, y, forget=True)
-        if solve:
-            self.solve()
+        if compute_output_weights:
+            self.compute_output_weights()

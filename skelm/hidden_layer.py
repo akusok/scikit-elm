@@ -32,37 +32,44 @@ ufuncs = {"tanh": np.tanh,
 class SLFN(Protocol):
     """Single hidden Layer Feed-forward neural Network, general ELM hidden neuron layer."""
 
-    @abstractmethod
+    n_neurons: int  # number of neurons
+
     def transform(self, X: ArrayLike) -> ArrayLike:
         """Hidden layer projects data into another format."""
 
 
-class DenseSLFN(SLFN):
+class DenseSLFN:
     def __init__(self, W, ufunc):
         self.W = W
         self.ufunc = ufunc
+        self.n_neurons = W.shape[1]
 
     def transform(self, X):
         H = self.ufunc(X @ self.W)
         return H
 
 
-class PairwiseSLFN(SLFN):
+class PairwiseSLFN:
     def __init__(self, X, k):
         self.basis = X[:k]
+        self.n_neurons = self.basis.shape[0]
 
     def transform(self, X):
         H = cdist(X, self.basis, metric="euclidean")
         return H
 
 
-class CopyInputsSLFN(SLFN):
+class CopyInputsSLFN:
+    def __init__(self, X):
+        self.n_neurons = X.shape[1]
+
     def transform(self, X):
         return X
 
 
 class RandomProjectionSLFN(SLFN):
     def __init__(self, X, n_neurons, ufunc=np.tanh, random_state=None):
+        self.n_neurons = n_neurons
         self.ufunc = ufunc
         self.projection = GaussianRandomProjection(
             n_components=n_neurons, random_state=random_state
@@ -75,6 +82,7 @@ class RandomProjectionSLFN(SLFN):
 
 class SparseRandomProjectionSLFN(SLFN):
     def __init__(self, X, n_neurons, density=0.1, ufunc=np.tanh, random_state=None):
+        self.n_neurons = n_neurons
         self.ufunc = ufunc
         self.projection = SparseRandomProjection(
             n_components=n_neurons, density=density, dense_output=True, random_state=random_state
@@ -87,6 +95,7 @@ class SparseRandomProjectionSLFN(SLFN):
 
 class PairwiseRandomProjectionSLFN(SLFN):
     def __init__(self, X, n_neurons, pairwise_metric="euclidean", random_state=None):
+        self.n_neurons = n_neurons
         self.projection = PairwiseRandomProjection(
             n_components=n_neurons, pairwise_metric=pairwise_metric, random_state=random_state
         )

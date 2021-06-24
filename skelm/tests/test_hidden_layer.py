@@ -64,7 +64,7 @@ class TestNativeSLFNs(unittest.TestCase):
     def test_SLFN_LinearPart(self):
         for X, y in data_formats:
             with self.subTest(matrix_type=type(X)):
-                dummy_projection = CopyInputsSLFN()
+                dummy_projection = CopyInputsSLFN(X)
                 H_copy = dummy_projection.transform(X)
                 # "allclose" for sparse matrices
                 self.assertEqual(H_copy.shape, X.shape)
