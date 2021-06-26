@@ -25,7 +25,7 @@ warnings.simplefilter("ignore", DataDimensionalityWarning)
 
 
 class ELMProtocol(Protocol):
-    """Extreme Learning Machine protocol.
+    """Extreme Learning Machine very basic functionality.
 
     Basic operation is to transform data using each SLFN, stack those features together,
     then compute weights/intercepts of an output linear model with a solver.
@@ -47,6 +47,8 @@ class ELMProtocol(Protocol):
 
 
 class BatchELMProtocol(ELMProtocol, Protocol):
+    """ELM that supports incremental solution.
+    """
     solver: BatchSolver  # batch ELM needs a batch solver
 
     def partial_fit(self, X: ArrayLike, y: ArrayLike, solve: bool, forget: bool) -> BatchELMProtocol:
@@ -60,6 +62,7 @@ class BatchELMProtocol(ELMProtocol, Protocol):
 
 
 class BasicELM(ELMProtocol):
+    """Minimal ELM implementation."""
 
     def __init__(self, SLFNs: Iterable[SLFN], solver: Solver):
         self.SLFNs = SLFNs
@@ -86,6 +89,7 @@ class BasicELM(ELMProtocol):
 
 
 class BatchELM(BasicELM, BatchELMProtocol):
+    """Minimal incremental ELM implementation."""
 
     def __init__(self, SLFNs: Iterable[SLFN], solver: BatchSolver):
         super().__init__(SLFNs, solver)
@@ -103,7 +107,7 @@ class BatchELM(BasicELM, BatchELMProtocol):
 
 
 class ScikitELM(BaseEstimator, RegressorMixin):
-    """Wrapper around ELM functions that makes them compatible with Scikit-Learn.
+    """Incremental ELM compatible with Scikit-Learn parametrization.
     """
 
     def __init__(self, alpha=1e-7, batch_size=None, include_original_features=False,
@@ -127,10 +131,7 @@ class ScikitELM(BaseEstimator, RegressorMixin):
 
         return self.model_.n_neurons
 
-    def _init_model(self, X):
-        """Create composition objects and ELM model.
-        """
-
+    def _make_slfns(self, X) -> Iterable[SLFN]:
         # only one type of neurons
         SLFNs = []
         if not hasattr(self.n_neurons, '__iter__'):
@@ -170,6 +171,12 @@ class ScikitELM(BaseEstimator, RegressorMixin):
         if self.include_original_features:
             SLFNs.append(CopyInputsSLFN(X))
 
+        return SLFNs
+
+    def _init_model(self, X):
+        """Create composition objects and ELM model.
+        """
+        SLFNs = self._make_slfns(X)
         solver = BatchCholeskySolver(self.alpha)
         self.model_ = BatchELM(SLFNs, solver)
 
@@ -196,7 +203,6 @@ class ScikitELM(BaseEstimator, RegressorMixin):
                 in :meth:`fit`, this may cause memory issues at high number of outputs
                 and very high number of samples. Feed data by smaller batches in such case.
         """
-
         X = check_array(X, accept_sparse=True)
         check_is_fitted(self, "is_fitted_")
         return self.model_.predict(X)
@@ -217,20 +223,8 @@ class ScikitELM(BaseEstimator, RegressorMixin):
         self : object
             Returns self.
         """
-        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
-
-        if len(y.shape) > 1 and y.shape[1] == 1:
-            msg = ("A column-vector y was passed when a 1d array was expected. "
-                   "Please change the shape of y to (n_samples, ), for example using ravel().")
-            warnings.warn(msg, DataConversionWarning)
-
-        # run late init
-        if not hasattr(self, 'model_'):
-            self._init_model(X)
-
-        self.model_.fit(X, y)
-        self.n_features_ = X.shape[1]
-        self.is_fitted_ = True
+        self._reset()
+        self.partial_fit(X, y, compute_output_weights=True)
         return self
 
     def partial_fit(self, X, y=None, forget=False, compute_output_weights=True):
@@ -329,16 +323,6 @@ class ScikitELM(BaseEstimator, RegressorMixin):
                 del self.is_fitted_
 
         return self
-
-
-class _BaseELM(BaseEstimator):
-
-
-    def _reset(self):
-        [delattr(self, attr) for attr in ('n_features_', 'solver_', 'hidden_layers_', 'is_fitted_', 'label_binarizer_') if hasattr(self, attr)]
-
-
-
 
 
 class ELMRegressor(ScikitELM):
@@ -457,6 +441,7 @@ class ELMRegressor(ScikitELM):
     """
     pass
 
+
 class ELMClassifier(ScikitELM, ClassifierMixin):
     """ELM classifier, modified for multi-label classification support.
 
@@ -494,7 +479,6 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
         if hasattr(self, 'label_binarizer_'):
             delattr(self, 'label_binarizer_')
         super()._reset()
-
 
     def _update_classes(self, y):
         if not hasattr(self.model_.solver, "partial_fit"):
@@ -582,17 +566,8 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
             Returns self.
         """
 
-        # init new label binarizer
-        self.label_binarizer_ = LabelBinarizer()
-        if type_of_target(y).endswith("-multioutput"):
-            self.label_binarizer_ = MultiLabelBinarizer()
-        self.label_binarizer_.fit(self.classes if self.classes is not None else y)
-
-        y_numeric = self.label_binarizer_.transform(y)
-        if len(y_numeric.shape) > 1 and y_numeric.shape[1] == 1:
-            y_numeric = y_numeric[:, 0]
-
-        super().fit(X, y_numeric)
+        self._reset()
+        self.partial_fit(X, y)
         return self
 
     def predict(self, X):
@@ -609,7 +584,6 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
             Returns one most probable class for multi-class problem, or
             a binary vector of all relevant classes for multi-label problem.
         """
-
         check_is_fitted(self, "is_fitted_")
         scores = super().predict(X)
         return self.label_binarizer_.inverse_transform(scores)
