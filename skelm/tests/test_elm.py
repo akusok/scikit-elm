@@ -27,9 +27,9 @@ class TestScikitELM(unittest.TestCase):
         check_estimator(model)
 
     def test_IncludeOriginalFeature_AddsNewNeuronType(self):
-        model = ScikitELM(n_neurons=3, include_original_features=True)
-        model.fit(self.X, self.y)
-        self.assertEqual(len(model.model_.SLFNs), 2)
+        elm = ScikitELM(n_neurons=3, include_original_features=True)
+        elm.fit(self.X, self.y)
+        self.assertEqual(len(elm.SLFNs_), 2)
 
     def test_IncludeOriginalFeature_MoreNeurons(self):
         model_basic = ScikitELM(n_neurons=3, include_original_features=False)

@@ -56,7 +56,7 @@ class TestUnittests(unittest.TestCase):
         elm1.partial_fit(X[::2], T[::2])
         elm1.partial_fit(X[1::2], T[1::2])
 
-        assert_allclose(elm0.model_.solver.coef_, elm1.model_.solver.coef_)
+        assert_allclose(elm0.solver_.coef_, elm1.solver_.coef_)
 
     def test_IterativeClassification_FeedClassesOneByOne(self):
         X, T = self.data_class
@@ -101,7 +101,7 @@ class TestUnittests(unittest.TestCase):
         elm = ELMRegressor(n_neurons=[2, 3], ufunc=['tanh', 'sigm'],
                            density=[None, None], pairwise_metric=[None, None])
         elm.fit(X, Y)
-        self.assertEqual(len(elm.model_.SLFNs), 2)
+        self.assertEqual(len(elm.SLFNs_), 2)
 
     def test_MultipleHiddenLayers_MoreCombinations(self):
         X, Y = self.data_reg
@@ -110,7 +110,7 @@ class TestUnittests(unittest.TestCase):
                            density=[None, 0.5, 0.8, None, None],
                            pairwise_metric=[None, None, None, 'l1', 'chebyshev'])
         elm.fit(X, Y)
-        self.assertEqual(len(elm.model_.SLFNs), 5)
+        self.assertEqual(len(elm.SLFNs_), 5)
 
     def test_MultipleHL_DefaultValues(self):
         X, Y = self.data_reg

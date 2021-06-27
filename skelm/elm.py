@@ -131,6 +131,18 @@ class ScikitELM(BaseEstimator, RegressorMixin):
 
         return self.model_.n_neurons
 
+    @property
+    def SLFNs_(self):
+        if not hasattr(self, "model_"):
+            return None
+        return self.model_.SLFNs
+
+    @property
+    def solver_(self):
+        if not hasattr(self, "model_"):
+            return None
+        return self.model_.solver
+
     def _make_slfns(self, X) -> Iterable[SLFN]:
         # only one type of neurons
         SLFNs = []
