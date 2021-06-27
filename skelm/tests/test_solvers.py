@@ -19,6 +19,12 @@ class TestLanczosSolver(unittest.TestCase):
         assert_allclose(Y[1::2], Yh, rtol=1e-3)
         assert_allclose(solver.coef_, np.array([1, 2, 3]), rtol=1e-3)
 
+    def test_SolveMultiOutputs_Works(self):
+        X = np.random.randn(100, 3)
+        Y = X @ np.random.randn(3, 5)
+        with self.assertRaises(ValueError):
+            LanczosSolver().fit(X, Y)
+
     def test_SolveArtificialIntercept_Works(self):
         X_no_intercept = np.random.randn(100, 3)
         Y = X_no_intercept @ np.array([1, 2, 3]) - 2

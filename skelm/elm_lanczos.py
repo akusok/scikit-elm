@@ -1,9 +1,10 @@
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
-from typing import Iterable
+from sklearn.utils.validation import check_is_fitted, check_X_y, check_array
+from typing import Iterable, Callable, List
 
 from .hidden_layer import SLFN, CopyInputsSLFN, HiddenLayer
-from .solver_lanczos import LanczosSolver
+from .solver_lanczos import LanczosSolver, worst_of_five
 
 
 class LanczosELM(BaseEstimator, RegressorMixin):
@@ -65,13 +66,32 @@ class LanczosELM(BaseEstimator, RegressorMixin):
         self.SLFNs_ = self._make_slfns(X)
         self.solver_ = LanczosSolver()
 
-    def fit(self, X, y, X_val=None, y_val=None):
+    @classmethod
+    def _add_bias(cls, H):
+        return np.hstack((np.ones((H.shape[0], 1)), H))
+
+    def fit(self, X, y, X_val=None, y_val=None, stopping_condition: Callable[[List[float]], bool] = worst_of_five):
+        X, y = check_X_y(X, y, multi_output=False, accept_sparse=False)
+
+        if not hasattr(self, "solver_"):
+            self._init_model(X)
+
         H = np.hstack([slfn.transform(X) for slfn in self.SLFNs_])
-        H_val = np.hstack([slfn.transform(X_val) for slfn in self.SLFNs_])
-        self.solver_.fit(H, y, H_val, y_val)
+        H_bias = LanczosELM._add_bias(H)
+
+        if X_val is None:
+            H_val_bias = None
+        else:
+            H_val = np.hstack([slfn.transform(X_val) for slfn in self.SLFNs_])
+            H_val_bias = LanczosELM._add_bias(H_val)
+
+        self.solver_.fit(H_bias, y, H_val_bias, y_val, stopping_condition)
         return self
 
     def predict(self, X):
+        check_is_fitted(self, "SLFNs_")
+        X = check_array(X)
         H = np.hstack([slfn.transform(X) for slfn in self.SLFNs_])
-        yh = H @ self.solver_.coef_ + self.solver_.intercept_
+        H_bias = LanczosELM._add_bias(H)
+        yh = H_bias @ self.solver_.coef_
         return yh

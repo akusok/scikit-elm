@@ -31,6 +31,15 @@ class LanczosSolver(Solver):
         :param stopping_condition:  func(validation_error_list) -> bool. Function returning True to stop solution early.
         :return:
         """
+
+        # Lanczos solver works only with vector 'y'
+        if len(y.shape) == 2:
+            if y.shape[1] != 1:
+                raise ValueError("Lanczos solver accepts only vector 'y'. "
+                                 "Use separate model for each output in multi-output problem.")
+            else:
+                y = y.ravel()
+
         dim = X.shape[1]
         r = [np.nan] * (dim + 1)
         q = [np.nan] * (dim + 1)

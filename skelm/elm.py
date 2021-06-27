@@ -97,7 +97,7 @@ class BatchELM(BasicELM, BatchELMProtocol):
 
     def partial_fit(self, X, y, compute_output_weights=True, forget=False) -> BatchELM:
         H = np.hstack([slfn.transform(X) for slfn in self.SLFNs])
-        self.solver.partial_fit(H, y, compute_output_weights=True)
+        self.solver.partial_fit(H, y, forget=forget, compute_output_weights=True)
         self.is_fitted = True
         return self
 
@@ -184,7 +184,7 @@ class ScikitELM(BaseEstimator, RegressorMixin):
         runtime_attributes = ('n_features_', 'model_', 'is_fitted_')
         [delattr(self, attr) for attr in runtime_attributes if hasattr(self, attr)]
 
-    def predict(self, X):
+    def predict(self, X) -> ArrayLike:
         """Predict real valued outputs for new inputs X.
 
         Parameters
@@ -207,7 +207,7 @@ class ScikitELM(BaseEstimator, RegressorMixin):
         check_is_fitted(self, "is_fitted_")
         return self.model_.predict(X)
 
-    def fit(self, X, y):
+    def fit(self, X, y) -> ScikitELM:
         """Reset model and fit on the given data.
 
         Parameters
@@ -227,7 +227,7 @@ class ScikitELM(BaseEstimator, RegressorMixin):
         self.partial_fit(X, y, compute_output_weights=True)
         return self
 
-    def partial_fit(self, X, y=None, forget=False, compute_output_weights=True):
+    def partial_fit(self, X, y=None, forget=False, compute_output_weights=True) -> ScikitELM:
         """Update model with a new batch of data.
 
                 |method_partial_fit|
@@ -513,7 +513,7 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
         if hasattr(self, 'is_fitted_'):
             del self.is_fitted_
 
-    def partial_fit(self, X, y=None, forget=False, update_classes=False, compute_output_weights=True):
+    def partial_fit(self, X, y=None, forget=False, update_classes=False, compute_output_weights=True) -> ELMClassifier:
         """Update classifier with a new batch of data.
 
         |method_partial_fit|
@@ -557,7 +557,7 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
         super().partial_fit(X, y_numeric, forget=forget, compute_output_weights=compute_output_weights)
         return self
 
-    def fit(self, X, y=None):
+    def fit(self, X, y=None) -> ELMClassifier:
         """Fit a classifier erasing any previously trained model.
 
         Returns
@@ -570,7 +570,7 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
         self.partial_fit(X, y)
         return self
 
-    def predict(self, X):
+    def predict(self, X) -> ArrayLike:
         """Predict classes of new inputs X.
 
         Parameters
@@ -588,7 +588,7 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
         scores = super().predict(X)
         return self.label_binarizer_.inverse_transform(scores)
 
-    def predict_proba(self, X):
+    def predict_proba(self, X) -> ArrayLike:
         """Probability estimation for all classes.
 
         Positive class probabilities are computed as
