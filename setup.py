@@ -20,7 +20,7 @@ URL = 'https://github.com/akusok/scikit-elm'
 LICENSE = 'MIT'
 DOWNLOAD_URL = 'https://github.com/akusok/scikit-elm'
 VERSION = __version__
-INSTALL_REQUIRES = ['numpy', 'scipy', 'scikit-learn']
+INSTALL_REQUIRES = ['numpy', 'scipy', 'scikit-learn', 'dask[complete]']
 CLASSIFIERS = ['Intended Audience :: Science/Research',
                'Intended Audience :: Developers',
                'License :: OSI Approved',
