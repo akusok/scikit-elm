@@ -6,7 +6,7 @@ from sklearn.utils.validation import check_is_fitted, check_array
 import dask.array as da
 import dask.dataframe as dd
 
-from .elm import _BaseELM
+from .elm import BasicELM
 from dask.distributed import Client, LocalCluster, wait
 from .utils import _is_list_of_strings, _dense, HiddenLayerType, dummy
 
@@ -27,7 +27,7 @@ def _read_numeric_file(fname):
     except:
         pass
 
-class LargeELMRegressor(_BaseELM, RegressorMixin):
+class LargeELMRegressor(BasicELM, RegressorMixin):
     """ELM Regressor for larger-than-memory problems.
 
     Uses `Dask <https://dask.org>`_ for batch analysis of data in Parquet files.

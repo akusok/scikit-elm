@@ -1,7 +1,10 @@
-import numpy as np
-import scipy as sp
+from __future__ import annotations
+
+from .solver import CholeskySolver
+
 import warnings
-from scipy.linalg import LinAlgWarning
+from numpy.typing import ArrayLike
+
 from sklearn.exceptions import DataConversionWarning
 from sklearn.base import BaseEstimator, RegressorMixin
 
@@ -9,63 +12,56 @@ from sklearn.utils.validation import check_is_fitted
 from sklearn.utils.extmath import safe_sparse_dot
 from sklearn.utils import check_X_y, check_array
 
+from scipy.linalg import LinAlgWarning
 warnings.simplefilter("ignore", LinAlgWarning)
+
 
 class BatchCholeskySolver(BaseEstimator, RegressorMixin):
 
-    def __init__(self, alpha=1e-7):
+    def __init__(self, alpha: float = 1e-7):
         self.alpha = alpha
 
-    def _init_XY(self, X, y):
-        """Initialize covariance matrices, including a separate bias term.
-        """
-        d_in = X.shape[1]
-        self._XtX = np.eye(d_in + 1) * self.alpha
-        self._XtX[0, 0] = 0
-        if len(y.shape) == 1:
-            self._XtY = np.zeros((d_in + 1,))
-        else:
-            self._XtY = np.zeros((d_in + 1, y.shape[1]))
-
+    # interface to solver parameters, for save/load, and other usages
     @property
     def XtY_(self):
-        return self._XtY
-
-    @property
-    def XtX_(self):
-        return self._XtX
+        return self.solver_.XtY
 
     @XtY_.setter
     def XtY_(self, value):
-        self._XtY = value
+        self.solver_.XtY = value
+
+    @property
+    def XtX_(self):
+        return self.solver_.XtX
 
     @XtX_.setter
     def XtX_(self, value):
-        self._XtX = value
+        self.solver_.XtX = value
 
-    def _solve(self):
-        """Second stage of solution (X'X)B = X'Y using Cholesky decomposition.
+    @property
+    def coef_(self):
+        return self.solver_.coef_
 
-        Sets `is_fitted_` to True.
-        """
-        B = sp.linalg.solve(self._XtX, self._XtY, assume_a='sym', overwrite_a=False, overwrite_b=False)
-        self.coef_ = B[1:]
-        self.intercept_ = B[0]
-        self.is_fitted_ = True
+    @coef_.setter
+    def coef_(self, value):
+        self.solver_.coef_ = value
 
-    def _reset(self):
-        """Erase solution and data matrices.
-        """
-        [delattr(self, attr) for attr in ('_XtX', '_XtY', 'coef_', 'intercept_', 'is_fitted_') if hasattr(self, attr)]
+    @property
+    def intercept_(self):
+        return self.solver_.intercept_
+
+    @intercept_.setter
+    def intercept_(self, value):
+        self.solver_.intercept_ = value
 
     def fit(self, X, y):
         """Solves an L2-regularized linear system like Ridge regression, overwrites any previous solutions.
         """
-        self._reset()  # remove old solution
+        self.solver_ = CholeskySolver(self.alpha)  # reset solution
         self.partial_fit(X, y, compute_output_weights=True)
         return self
 
-    def partial_fit(self, X, y, forget=False, compute_output_weights=True):
+    def partial_fit(self, X, y, forget=False, compute_output_weights=True) -> BatchCholeskySolver:
         """Update model with a new batch of data.
 
         Output weight computation can be temporary turned off for faster processing. This will mark model as
@@ -96,7 +92,8 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
 
         # solution only
         if X is None and y is None and compute_output_weights:
-            self._solve()
+            self.solver_.compute_output_weights()
+            self.is_fitted_ = True
             return self
 
         # validate parameters
@@ -106,45 +103,26 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
                    Please change the shape of y to (n_samples, ), for example using ravel()."
             warnings.warn(msg, DataConversionWarning)
 
-        # init temporary data storage
-        if not hasattr(self, '_XtX'):
-            self._init_XY(X, y)
+
+        # do the model update + solution
+        if forget:
+            self.solver_.batch_forget(X, y, compute_output_weights=compute_output_weights)
         else:
-            if X.shape[1] + 1 != self._XtX.shape[0]:
-                n_new, n_old = X.shape[1], self._XtX.shape[0] - 1
-                raise ValueError("Number of features %d does not match previous data %d." % (n_new, n_old))
+            self.solver_.batch_update(X, y, compute_output_weights=compute_output_weights)
+        self.n_features_in_ = X.shape[1]
 
-        # compute temporary data
-        X_sum = safe_sparse_dot(X.T, np.ones((X.shape[0],)))
-        y_sum = safe_sparse_dot(y.T, np.ones((y.shape[0],)))
+        # reset "is_fitted" status if no solution requested
+        if hasattr(self, 'is_fitted_') and not compute_output_weights:
+            delattr(self, 'is_fitted_')
+            return self
 
-        if not forget:
-            self._XtX[0, 0] += X.shape[0]
-            self._XtX[1:, 0] += X_sum
-            self._XtX[0, 1:] += X_sum
-            self._XtX[1:, 1:] += X.T @ X
-
-            self._XtY[0] += y_sum
-            self._XtY[1:] += X.T @ y
-        else:
-            print("!!! forgetting")
-            self._XtX[0, 0] -= X.shape[0]
-            self._XtX[1:, 0] -= X_sum
-            self._XtX[0, 1:] -= X_sum
-            self._XtX[1:, 1:] -= X.T @ X
-
-            self._XtY[0] -= y_sum
-            self._XtY[1:] -= X.T @ y
-
-        # solve
-        if not compute_output_weights:
-            # mark as not fitted
-            [delattr(self, attr) for attr in ('coef_', 'intercept_', 'is_fitted_') if hasattr(self, attr)]
-        else:
-            self._solve()
+        self.is_fitted_ = True
         return self
 
-    def predict(self, X):
+    def compute_output_weights(self):
+        self.solver_.compute_output_weights()
+
+    def predict(self, X) -> ArrayLike:
         check_is_fitted(self, 'is_fitted_')
         X = check_array(X, accept_sparse=True)
-        return safe_sparse_dot(X, self.coef_, dense_output=True) + self.intercept_
+        return safe_sparse_dot(X, self.solver_.coef_, dense_output=True) + self.solver_.intercept_
