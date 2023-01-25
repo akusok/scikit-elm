@@ -1,9 +1,6 @@
 .. -*- mode: rst -*-
 
-|AppVeyor|_ |Codecov|_ |ReadTheDocs|_
-
-.. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/957kf3r6eqcnbspp?svg=true
-.. _AppVeyor: https://ci.appveyor.com/project/glemaitre/project-template
+|ReadTheDocs|_ |Codecov|_
 
 .. |Codecov| image:: https://codecov.io/gh/akusok/scikit-elm/branch/master/graph/badge.svg
 .. _Codecov: https://codecov.io/gh/akusok/scikit-elm
