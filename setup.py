@@ -37,14 +37,15 @@ CLASSIFIERS = ['Intended Audience :: Science/Research',
                'Programming Language :: Python :: 3.10']
 
 EXTRAS_REQUIRE = {
-    'tests': [
-        'unittest',],
     'docs': [
         'sphinx',
         'sphinx-gallery',
         'sphinx_rtd_theme',
         'numpydoc',
-        'matplotlib'
+        'matplotlib',
+        'pandas',
+        'dask',
+        'distributed',
     ]
 }
 
