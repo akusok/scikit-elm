@@ -43,7 +43,8 @@ EXTRAS_REQUIRE = {
         'sphinx_rtd_theme',
         'numpydoc',
         'matplotlib',
-        'dask'
+        'pandas',
+        'dask',
     ]
 }
 
