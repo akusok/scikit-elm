@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|Travis|_ |AppVeyor|_ |Codecov|_ |ReadTheDocs|_
+|AppVeyor|_ |Codecov|_ |ReadTheDocs|_
 
 .. |AppVeyor| image:: https://ci.appveyor.com/api/projects/status/957kf3r6eqcnbspp?svg=true
 .. _AppVeyor: https://ci.appveyor.com/project/glemaitre/project-template
