@@ -27,5 +27,3 @@ optimization and parameter selection without full re-training.
 Big Data and out-of-core learning support through dask_-powered backend.
 GPU acceleration support with NVidia hardware, and on macOS through plaidml_.
 
-*Toolbox is in active development, initial release soon.*
-
