@@ -45,6 +45,7 @@ EXTRAS_REQUIRE = {
         'matplotlib',
         'pandas',
         'dask',
+        'distributed',
     ]
 }
 
