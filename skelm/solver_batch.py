@@ -90,6 +90,9 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
         if self.alpha < 0:
             raise ValueError("Regularization parameter alpha must be non-negative.")
 
+        if not hasattr(self, "solver_"):
+            self.solver_ = CholeskySolver(self.alpha)  # init solution
+
         # solution only
         if X is None and y is None and compute_output_weights:
             self.solver_.compute_output_weights()
