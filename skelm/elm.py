@@ -143,6 +143,23 @@ class ScikitELM(BaseEstimator, RegressorMixin):
             return None
         return self.model_.solver
 
+    def _get_tags(self):
+        tags = {
+            'requires_positive_X': False,
+            'requires_positive_y': False,
+            'requires_y': True,
+            'poor_score': False,
+            'no_validation': True,
+            'stateless': False,
+            'pairwise': False,
+            'multilabel': False,
+            '_skip_test': False,
+            'multioutput_only': False,
+            'binary_only': False,
+            'requires_fit': True}    
+        
+        return tags
+
     def _make_slfns(self, X) -> Iterable[SLFN]:
         # only one type of neurons
         SLFNs = []
