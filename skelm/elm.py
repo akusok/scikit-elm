@@ -485,7 +485,7 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
         return self.label_binarizer_.classes_
 
     def _get_tags(self):
-        return {"multioutput": True, "multilabel": True}
+        return {"multioutput": True, "multilabel": True, "pairwise": False}
 
     def _reset(self):
         if hasattr(self, 'label_binarizer_'):
