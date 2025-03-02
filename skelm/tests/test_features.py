@@ -1,13 +1,13 @@
 import unittest
 from numpy.testing import assert_allclose
-from sklearn.datasets import load_iris, load_boston
+from sklearn.datasets import load_iris, load_diabetes
 from skelm import ELMClassifier, ELMRegressor
 
 
 class TestFeatures(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.params = [(load_iris(return_X_y=True), ELMClassifier), (load_boston(return_X_y=True), ELMRegressor)]
+        self.params = [(load_iris(return_X_y=True), ELMClassifier), (load_diabetes(return_X_y=True), ELMRegressor)]
 
     def test_NeuronsAmount_CanSetManually(self):
         for data, elm in self.params:

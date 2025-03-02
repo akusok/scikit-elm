@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from sklearn.datasets import load_iris, load_boston
+from sklearn.datasets import load_iris, load_diabetes
 
 from skelm import ELMClassifier, ELMRegressor
 
@@ -13,7 +13,7 @@ def data_class():
 
 @pytest.fixture
 def data_reg():
-    X, y = load_boston(return_X_y=True)
+    X, y = load_diabetes(return_X_y=True)
     return pd.DataFrame(X), pd.DataFrame(y)
 
 

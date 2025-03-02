@@ -8,9 +8,8 @@ from numpy.typing import ArrayLike
 from sklearn.exceptions import DataConversionWarning
 from sklearn.base import BaseEstimator, RegressorMixin
 
-from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils.extmath import safe_sparse_dot
-from sklearn.utils import check_X_y, check_array
 
 from scipy.linalg import LinAlgWarning
 warnings.simplefilter("ignore", LinAlgWarning)
@@ -100,7 +99,7 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
             return self
 
         # validate parameters
-        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True, y_numeric=True, ensure_2d=True)
+        X, y = validate_data(self, X, y, accept_sparse=True, multi_output=True, y_numeric=True, ensure_2d=True)
         if len(y.shape) > 1 and y.shape[1] == 1:
             msg = "A column-vector y was passed when a 1d array was expected.\
                    Please change the shape of y to (n_samples, ), for example using ravel()."
@@ -127,5 +126,5 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
 
     def predict(self, X) -> ArrayLike:
         check_is_fitted(self, 'is_fitted_')
-        X = check_array(X, accept_sparse=True)
+        X = validate_data(self, X, accept_sparse=True, reset=False)
         return safe_sparse_dot(X, self.solver_.coef_, dense_output=True) + self.solver_.intercept_

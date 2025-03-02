@@ -11,8 +11,9 @@ from typing import Protocol, Iterable, cast, Optional
 from numpy.typing import ArrayLike
 
 from sklearn.base import BaseEstimator, ClassifierMixin, RegressorMixin, clone
-from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils.multiclass import type_of_target
+from sklearn.utils import ClassifierTags
 
 from sklearn.preprocessing import LabelBinarizer, MultiLabelBinarizer
 from sklearn.exceptions import DataConversionWarning, DataDimensionalityWarning
@@ -21,6 +22,7 @@ from .hidden_layer import HiddenLayer, SLFN, CopyInputsSLFN
 from .solver_batch import BatchCholeskySolver
 from .solver import Solver, BatchSolver
 
+from sklearn.exceptions import DataConversionWarning, DataDimensionalityWarning
 warnings.simplefilter("ignore", DataDimensionalityWarning)
 
 
@@ -106,7 +108,7 @@ class BatchELM(BasicELM, BatchELMProtocol):
         self.is_fitted = True
 
 
-class ScikitELM(BaseEstimator, RegressorMixin):
+class ScikitELM(RegressorMixin, BaseEstimator):
     """Incremental ELM compatible with Scikit-Learn parametrization.
     """
 
@@ -123,6 +125,11 @@ class ScikitELM(BaseEstimator, RegressorMixin):
         self.density = density
         self.pairwise_metric = pairwise_metric
         self.random_state = random_state
+
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.input_tags.sparse=True
+        return tags
 
     @property
     def n_neurons_(self):
@@ -142,6 +149,17 @@ class ScikitELM(BaseEstimator, RegressorMixin):
         if not hasattr(self, "model_"):
             return None
         return self.model_.solver
+
+    @solver_.setter
+    def solver_(self, value):
+        if not hasattr(self, "model_"):
+            raise AttributeError("Model is not initialized")
+        self.model_.solver = value
+
+    @solver_.deleter
+    def solver_(self):
+        if hasattr(self, "model_"):
+            del self.model_.solver
 
     def _make_slfns(self, X) -> Iterable[SLFN]:
         # only one type of neurons
@@ -215,7 +233,7 @@ class ScikitELM(BaseEstimator, RegressorMixin):
                 in :meth:`fit`, this may cause memory issues at high number of outputs
                 and very high number of samples. Feed data by smaller batches in such case.
         """
-        X = check_array(X, accept_sparse=True)
+        X = validate_data(self, X, accept_sparse=True, reset=False)
         check_is_fitted(self, "is_fitted_")
         return self.model_.predict(X)
 
@@ -295,7 +313,8 @@ class ScikitELM(BaseEstimator, RegressorMixin):
             self.is_fitted_ = True
             return self
 
-        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
+        X, y = validate_data(self, X, y, accept_sparse=True, multi_output=True)
+        self.n_features_in_ = X.shape[1]
         if len(y.shape) > 1 and y.shape[1] == 1:
             msg = ("A column-vector y was passed when a 1d array was expected. "
                    "Please change the shape of y to (n_samples, ), for example using ravel().")
@@ -454,7 +473,7 @@ class ELMRegressor(ScikitELM):
     pass
 
 
-class ELMClassifier(ScikitELM, ClassifierMixin):
+class ELMClassifier(ClassifierMixin, ScikitELM):
     """ELM classifier, modified for multi-label classification support.
 
     :param classes: Set of classes to consider in the model; can be expanded at runtime.
@@ -484,8 +503,14 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
     def classes_(self):
         return self.label_binarizer_.classes_
 
-    def _get_tags(self):
-        return {"multioutput": True, "multilabel": True, "pairwise": False}
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.estimator_type = "classifier"
+        tags.target_tags.multi_output = True
+        tags.classifier_tags = ClassifierTags(multi_label=True)
+        tags.input_tags.pairwise = False
+        tags.input_tags.sparse=True
+        return tags
 
     def _reset(self):
         if hasattr(self, 'label_binarizer_'):
@@ -550,7 +575,8 @@ class ELMClassifier(ScikitELM, ClassifierMixin):
 
         #todo: Warning on strongly non-normalized data
 
-        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True)
+        X, y = validate_data(self, X, y, accept_sparse=True, multi_output=True)
+        self.n_features_in_ = X.shape[1]
 
         # init label binarizer if needed
         if not hasattr(self, 'label_binarizer_'):

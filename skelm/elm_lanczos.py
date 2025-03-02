@@ -1,13 +1,13 @@
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.utils.validation import check_is_fitted, check_X_y, check_array
+from sklearn.utils.validation import check_is_fitted, validate_data
 from typing import Iterable, Callable, List
 
 from .hidden_layer import SLFN, CopyInputsSLFN, HiddenLayer
 from .solver_lanczos import LanczosSolver, worst_of_five
 
 
-class LanczosELM(BaseEstimator, RegressorMixin):
+class LanczosELM(RegressorMixin, BaseEstimator):
 
     def __init__(self, include_original_features=False, n_neurons=None,
                  ufunc="tanh", density=None, pairwise_metric=None, random_state=None):
@@ -71,7 +71,8 @@ class LanczosELM(BaseEstimator, RegressorMixin):
         return np.hstack((np.ones((H.shape[0], 1)), H))
 
     def fit(self, X, y, X_val=None, y_val=None, stopping_condition: Callable[[List[float]], bool] = worst_of_five):
-        X, y = check_X_y(X, y, multi_output=False, accept_sparse=False)
+        X, y = validate_data(self, X, y, multi_output=False, accept_sparse=False)
+        self.n_features_in_ = X.shape[1]
 
         if not hasattr(self, "solver_"):
             self._init_model(X)
@@ -90,7 +91,7 @@ class LanczosELM(BaseEstimator, RegressorMixin):
 
     def predict(self, X):
         check_is_fitted(self, "SLFNs_")
-        X = check_array(X)
+        X = validate_data(self, X, reset=False)
         H = np.hstack([slfn.transform(X) for slfn in self.SLFNs_])
         H_bias = LanczosELM._add_bias(H)
         yh = H_bias @ self.solver_.coef_

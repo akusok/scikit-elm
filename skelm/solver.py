@@ -6,6 +6,7 @@ import warnings
 from typing import Protocol, Optional
 from numpy.typing import ArrayLike
 from sklearn.utils.extmath import safe_sparse_dot
+from sklearn.utils.validation import validate_data
 
 from scipy.linalg import LinAlgWarning
 warnings.simplefilter("ignore", LinAlgWarning)
@@ -173,10 +174,12 @@ class CholeskySolver:
         self.intercept_ = B[0]
 
     def fit(self, X, y):
+        X, y = validate_data(self, X, y, accept_sparse=True, multi_output=True)
         self._reset_model()
         self._init_model(X, y)
         self._update_model(X, y)
         self.compute_output_weights()
+        self.n_features_in_ = X.shape[1]
 
     def partial_fit(self, X, y, compute_output_weights=True, forget=False):
         if forget:

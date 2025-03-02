@@ -5,7 +5,7 @@ from scipy.sparse import csc_matrix, csr_matrix, coo_matrix, lil_matrix
 import warnings
 from sklearn.exceptions import DataDimensionalityWarning
 
-from sklearn.datasets import load_boston, load_iris
+from sklearn.datasets import load_diabetes, load_iris
 from sklearn.preprocessing import RobustScaler
 from sklearn.utils.estimator_checks import check_estimator
 
@@ -19,7 +19,7 @@ from skelm.hidden_layer import (
 
 
 c_X, c_y = load_iris(return_X_y=True)
-r_X, r_y = load_boston(return_X_y=True)
+r_X, r_y = load_diabetes(return_X_y=True)
 r_X = RobustScaler().fit_transform(r_X)
 
 data_formats = (

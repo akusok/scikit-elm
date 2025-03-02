@@ -19,5 +19,15 @@ build-backend = "hatchling.build"
 
 [dependency-groups]
 dev = [
+    "cloudpickle>=3.1.1",
+    "dask>=2025.2.0",
+    "distributed>=2025.2.0",
+    "matplotlib>=3.10.1",
+    "pandas>=2.2.3",
+    "pyarrow>=19.0.1",
     "pytest>=8.3.4",
+]
+doc = [
+    "sphinx>=8.2.1",
+    "sphinx-gallery>=0.19.0",
 ]

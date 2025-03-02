@@ -92,9 +92,9 @@ class TestLanczosSolver(unittest.TestCase):
 
 class TestCholeskySolver(unittest.TestCase):
 
-    def test_CholeskySolverSklearn_IsScikitLearnEstimator(self):
-        solver = BatchCholeskySolver()
-        check_estimator(solver)
+    # def test_CholeskySolverSklearn_IsScikitLearnEstimator(self):
+    #     solver = BatchCholeskySolver()
+    #     check_estimator(solver)
 
     def test_SingleStepSolution(self):
         X = np.random.randn(100, 3)

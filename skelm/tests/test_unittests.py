@@ -2,14 +2,14 @@ import unittest
 from numpy.testing import assert_allclose
 import numpy as np
 from skelm import ELMClassifier, ELMRegressor
-from sklearn.datasets import load_iris, load_boston
+from sklearn.datasets import load_iris, load_diabetes
 
 
 class TestUnittests(unittest.TestCase):
 
     def setUp(self):
         self.data_class = load_iris(return_X_y=True)
-        self.data_reg = load_boston(return_X_y=True)
+        self.data_reg = load_diabetes(return_X_y=True)
 
     def test_Classifier_predict_ReturnsIntegerArray(self):
         X = np.array([[1], [2], [3]])
@@ -18,7 +18,7 @@ class TestUnittests(unittest.TestCase):
         elm.fit(X, Y)
         Yh = elm.predict(X)
         self.assertIsInstance(Yh, np.ndarray)
-        assert_allclose(Yh, Yh.astype(np.int))
+        assert_allclose(Yh, Yh.astype("int"))
 
     def test_Classifier_WrongNumberOfFeatures_RaisesError(self):
         X, T = self.data_class

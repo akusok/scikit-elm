@@ -3,7 +3,7 @@ import warnings
 import numpy as np
 from sklearn.exceptions import DataDimensionalityWarning
 
-from sklearn.datasets import load_boston
+from sklearn.datasets import load_diabetes
 from sklearn.utils.estimator_checks import check_estimator
 
 from skelm.hidden_layer import RandomProjectionSLFN
@@ -15,7 +15,7 @@ from skelm.elm_lanczos import LanczosELM
 class TestScikitELM(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.X, y = load_boston(return_X_y=True)
+        self.X, y = load_diabetes(return_X_y=True)
         self.y = y[:, None]
         warnings.simplefilter("ignore", DataDimensionalityWarning)
 
@@ -41,7 +41,7 @@ class TestScikitELM(unittest.TestCase):
 class TestBasicELM(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.X, y = load_boston(return_X_y=True)
+        self.X, y = load_diabetes(return_X_y=True)
         self.y = y[:, None]
         warnings.simplefilter("ignore", DataDimensionalityWarning)
 
@@ -70,7 +70,7 @@ class TestBasicELM(unittest.TestCase):
 class TestLanczosELM(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.X, y = load_boston(return_X_y=True)
+        self.X, y = load_diabetes(return_X_y=True)
         self.y = y[:, None]
         warnings.simplefilter("ignore", DataDimensionalityWarning)
 
