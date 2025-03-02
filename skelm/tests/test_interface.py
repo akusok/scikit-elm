@@ -9,7 +9,6 @@ BatchELMs = (ScikitELM, ELMRegressor, ELMClassifier)
 
 
 class TestInterface(unittest.TestCase):
-
     def setUp(self) -> None:
         self.X, self.y = load_iris(return_X_y=True)
 

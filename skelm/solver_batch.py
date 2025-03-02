@@ -8,16 +8,15 @@ from numpy.typing import ArrayLike
 from sklearn.exceptions import DataConversionWarning
 from sklearn.base import BaseEstimator, RegressorMixin
 
-from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils.extmath import safe_sparse_dot
-from sklearn.utils import check_X_y, check_array
 
 from scipy.linalg import LinAlgWarning
+
 warnings.simplefilter("ignore", LinAlgWarning)
 
 
 class BatchCholeskySolver(BaseEstimator, RegressorMixin):
-
     def __init__(self, alpha: float = 1e-7):
         self.alpha = alpha
 
@@ -55,8 +54,7 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
         self.solver_.intercept_ = value
 
     def fit(self, X, y):
-        """Solves an L2-regularized linear system like Ridge regression, overwrites any previous solutions.
-        """
+        """Solves an L2-regularized linear system like Ridge regression, overwrites any previous solutions."""
         self.solver_ = CholeskySolver(self.alpha)  # reset solution
         self.partial_fit(X, y, compute_output_weights=True)
         return self
@@ -100,12 +98,11 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
             return self
 
         # validate parameters
-        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True, y_numeric=True, ensure_2d=True)
+        X, y = validate_data(self, X, y, accept_sparse=True, multi_output=True, y_numeric=True, ensure_2d=True)
         if len(y.shape) > 1 and y.shape[1] == 1:
             msg = "A column-vector y was passed when a 1d array was expected.\
                    Please change the shape of y to (n_samples, ), for example using ravel()."
             warnings.warn(msg, DataConversionWarning)
-
 
         # do the model update + solution
         if forget:
@@ -115,8 +112,8 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
         self.n_features_in_ = X.shape[1]
 
         # reset "is_fitted" status if no solution requested
-        if hasattr(self, 'is_fitted_') and not compute_output_weights:
-            delattr(self, 'is_fitted_')
+        if hasattr(self, "is_fitted_") and not compute_output_weights:
+            delattr(self, "is_fitted_")
             return self
 
         self.is_fitted_ = True
@@ -126,6 +123,6 @@ class BatchCholeskySolver(BaseEstimator, RegressorMixin):
         self.solver_.compute_output_weights()
 
     def predict(self, X) -> ArrayLike:
-        check_is_fitted(self, 'is_fitted_')
-        X = check_array(X, accept_sparse=True)
+        check_is_fitted(self, "is_fitted_")
+        X = validate_data(self, X, accept_sparse=True, reset=False)
         return safe_sparse_dot(X, self.solver_.coef_, dense_output=True) + self.solver_.intercept_

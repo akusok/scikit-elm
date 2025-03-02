@@ -5,7 +5,7 @@ from scipy.sparse import csc_matrix, csr_matrix, coo_matrix, lil_matrix
 import warnings
 from sklearn.exceptions import DataDimensionalityWarning
 
-from sklearn.datasets import load_boston, load_iris
+from sklearn.datasets import load_diabetes, load_iris
 from sklearn.preprocessing import RobustScaler
 from sklearn.utils.estimator_checks import check_estimator
 
@@ -14,12 +14,12 @@ from skelm.hidden_layer import (
     SparseRandomProjectionSLFN,
     PairwiseRandomProjectionSLFN,
     CopyInputsSLFN,
-    HiddenLayer
+    HiddenLayer,
 )
 
 
 c_X, c_y = load_iris(return_X_y=True)
-r_X, r_y = load_boston(return_X_y=True)
+r_X, r_y = load_diabetes(return_X_y=True)
 r_X = RobustScaler().fit_transform(r_X)
 
 data_formats = (
@@ -32,7 +32,7 @@ data_formats = (
     (coo_matrix(r_X), r_y),
     (coo_matrix(c_X), c_y),
     (lil_matrix(r_X), r_y),
-    (lil_matrix(c_X), c_y)
+    (lil_matrix(c_X), c_y),
 )
 
 
@@ -71,12 +71,11 @@ class TestNativeSLFNs(unittest.TestCase):
                 self.assertLess(np.abs(H_copy - X).max(), 1e-5, msg="Arrays are not equal")
 
 
-
 ###########################
 ## Scikit-Learn's wrapper
 
-class TestScikitLearnCompatibleInterface(unittest.TestCase):
 
+class TestScikitLearnCompatibleInterface(unittest.TestCase):
     def test_HiddenLayer_IsScikitLearnEstimator(self):
         model_rp = HiddenLayer(5)
         model_srp = HiddenLayer(5, density=0.5)
@@ -116,8 +115,7 @@ class TestScikitLearnCompatibleInterface(unittest.TestCase):
                 self.assertIsInstance(model.SLFN_, PairwiseRandomProjectionSLFN)
 
     def test_PairwiseKernel_TooManyNeurons_StillWorks(self):
-        """More neurons than original data features available; model still works.
-        """
+        """More neurons than original data features available; model still works."""
         for X, y in data_formats:
             with self.subTest(matrix_type=type(X)):
                 model = HiddenLayer(n_neurons=3 * X.shape[0], pairwise_metric="cosine")
@@ -137,6 +135,7 @@ class TestScikitLearnCompatibleInterface(unittest.TestCase):
     def test_Ufunc_CustomCreatedUfunc_Works(self):
         def foo(x):
             return x + 1
+
         my_ufunc = np.frompyfunc(foo, 1, 1)
         for X, y in data_formats:
             with self.subTest(matrix_type=type(X)):
@@ -157,10 +156,24 @@ class TestScikitLearnCompatibleInterface(unittest.TestCase):
                 model.fit(r_X)
 
     def test_PairwiseDistances_AllKinds_FromScipy(self):
-        for pm in ["braycurtis", "canberra", "chebyshev", "correlation", "dice", "hamming",
-                   "jaccard", "kulsinski", "mahalanobis", "minkowski", "rogerstanimoto",
-                   "russellrao", "seuclidean", "sokalmichener", "sokalsneath", "sqeuclidean"]:
+        for pm in [
+            "braycurtis",
+            "canberra",
+            "chebyshev",
+            "correlation",
+            "dice",
+            "hamming",
+            "jaccard",
+            "kulsinski",
+            "mahalanobis",
+            "minkowski",
+            "rogerstanimoto",
+            "russellrao",
+            "seuclidean",
+            "sokalmichener",
+            "sokalsneath",
+            "sqeuclidean",
+        ]:
             with self.subTest(pairwise_metric=pm):
                 model = HiddenLayer(5, pairwise_metric=pm)
                 model.fit(r_X)
-

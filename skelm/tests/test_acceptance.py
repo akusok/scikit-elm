@@ -9,7 +9,6 @@ from sklearn.exceptions import DataDimensionalityWarning, DataConversionWarning
 
 
 class TestAcceptance(unittest.TestCase):
-
     def setUp(self) -> None:
         self.data_class = load_iris(return_X_y=True)
         self.data_ml = make_multilabel_classification()
@@ -18,10 +17,9 @@ class TestAcceptance(unittest.TestCase):
         warnings.simplefilter("ignore", DataConversionWarning)
 
     def test_SineWave_Solves(self):
-        """A highly non-linear regression problem, with added strong noise.
-        """
+        """A highly non-linear regression problem, with added strong noise."""
         X = np.linspace(-1, 1, num=1000)[:, None]
-        Y = np.sin(16 * X) * X + 0.2*np.random.randn(1000)[:, None]
+        Y = np.sin(16 * X) * X + 0.2 * np.random.randn(1000)[:, None]
 
         elm = ELMRegressor(random_state=0)
         elm.fit(X, Y)
@@ -31,12 +29,8 @@ class TestAcceptance(unittest.TestCase):
         self.assertLess(MSE, 0.3)
 
     def test_Xor_OneNeuron_Solved(self):
-        """ELM should be able to solve XOR problem.
-        """
-        X = np.array([[0, 0],
-                      [1, 1],
-                      [1, 0],
-                      [0, 1]])
+        """ELM should be able to solve XOR problem."""
+        X = np.array([[0, 0], [1, 1], [1, 0], [0, 1]])
         Y = np.array([1, 1, -1, -1])
 
         elm = ELMClassifier(n_neurons=3, random_state=0)
@@ -72,7 +66,7 @@ class TestAcceptance(unittest.TestCase):
     def test_RegularizationL2_DifferentValue_ChangesPrediction(self):
         X, Y = self.data_reg
         Yh_1 = ELMRegressor(alpha=1e-7, random_state=0).fit(X, Y).predict(X)
-        Yh_2 = ELMRegressor(alpha=1e+3, random_state=0).fit(X, Y).predict(X)
+        Yh_2 = ELMRegressor(alpha=1e3, random_state=0).fit(X, Y).predict(X)
 
         self.assertFalse(np.allclose(Yh_1, Yh_2))
 

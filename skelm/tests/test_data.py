@@ -1,13 +1,12 @@
 import unittest
-from sklearn.datasets import load_iris, load_boston
+from sklearn.datasets import load_iris, load_diabetes
 from skelm import ELMClassifier, ELMRegressor
 
 
 class TestData(unittest.TestCase):
-
     def setUp(self) -> None:
-        self.data_class =  load_iris(return_X_y=True)
-        self.data_reg = load_boston(return_X_y=True)
+        self.data_class = load_iris(return_X_y=True)
+        self.data_reg = load_diabetes(return_X_y=True)
 
     def test_Classification_Iris_BetterThanNaive(self):
         elm = ELMClassifier(random_state=0)

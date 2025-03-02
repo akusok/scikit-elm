@@ -4,9 +4,8 @@ import warnings
 from sklearn.exceptions import DataConversionWarning
 from sklearn.base import BaseEstimator, RegressorMixin
 
-from sklearn.utils.validation import check_is_fitted
+from sklearn.utils.validation import check_is_fitted, validate_data
 from sklearn.utils.extmath import safe_sparse_dot
-from sklearn.utils import check_X_y, check_array
 
 from dask import distributed
 from dask.distributed import Client, LocalCluster
@@ -50,14 +49,12 @@ class DaskCholeskySolver(BaseEstimator, RegressorMixin):
         self.swap_dir = swap_dir
 
     def _init_dask(self):
-        self.cluster_ = LocalCluster( n_workers=2, local_dir=self.swap_dir)
+        self.cluster_ = LocalCluster(n_workers=2, local_dir=self.swap_dir)
         self.client_ = Client(self.cluster_)
         print("Running on:")
         print(self.client_)
 
     def fit(self, X, y):
-
-
         self.W_ = da.random.normal
 
         return self
@@ -67,13 +64,11 @@ class DaskCholeskySolver(BaseEstimator, RegressorMixin):
 
 
 class BBvdsnjvlsdnjhbgfndjvksdjkvlndsf(BaseEstimator, RegressorMixin):
-
     def __init__(self, alpha=1e-7):
         self.alpha = alpha
 
     def _init_XY(self, X, y):
-        """Initialize covariance matrices, including a separate bias term.
-        """
+        """Initialize covariance matrices, including a separate bias term."""
         d_in = X.shape[1]
         self._XtX = np.eye(d_in + 1) * self.alpha
         self._XtX[0, 0] = 0
@@ -103,19 +98,17 @@ class BBvdsnjvlsdnjhbgfndjvksdjkvlndsf(BaseEstimator, RegressorMixin):
 
         Sets `is_fitted_` to True.
         """
-        B = sp.linalg.solve(self._XtX, self._XtY, assume_a='pos', overwrite_a=False, overwrite_b=False)
+        B = sp.linalg.solve(self._XtX, self._XtY, assume_a="pos", overwrite_a=False, overwrite_b=False)
         self.coef_ = B[1:]
         self.intercept_ = B[0]
         self.is_fitted_ = True
 
     def _reset(self):
-        """Erase solution and data matrices.
-        """
-        [delattr(self, attr) for attr in ('_XtX', '_XtY', 'coef_', 'intercept_', 'is_fitted_') if hasattr(self, attr)]
+        """Erase solution and data matrices."""
+        [delattr(self, attr) for attr in ("_XtX", "_XtY", "coef_", "intercept_", "is_fitted_") if hasattr(self, attr)]
 
     def fit(self, X, y):
-        """Solves an L2-regularized linear system like Ridge regression, overwrites any previous solutions.
-        """
+        """Solves an L2-regularized linear system like Ridge regression, overwrites any previous solutions."""
         self._reset()  # remove old solution
         self.partial_fit(X, y, compute_output_weights=True)
         return self
@@ -150,14 +143,14 @@ class BBvdsnjvlsdnjhbgfndjvksdjkvlndsf(BaseEstimator, RegressorMixin):
             return self
 
         # validate parameters
-        X, y = check_X_y(X, y, accept_sparse=True, multi_output=True, y_numeric=True, ensure_2d=True)
+        X, y = validate_data(self, X, y, accept_sparse=True, multi_output=True, y_numeric=True, ensure_2d=True)
         if len(y.shape) > 1 and y.shape[1] == 1:
             msg = "A column-vector y was passed when a 1d array was expected.\
                    Please change the shape of y to (n_samples, ), for example using ravel()."
             warnings.warn(msg, DataConversionWarning)
 
         # init temporary data storage
-        if not hasattr(self, '_XtX'):
+        if not hasattr(self, "_XtX"):
             self._init_XY(X, y)
         else:
             if X.shape[1] + 1 != self._XtX.shape[0]:
@@ -178,12 +171,12 @@ class BBvdsnjvlsdnjhbgfndjvksdjkvlndsf(BaseEstimator, RegressorMixin):
         # solve
         if not compute_output_weights:
             # mark as not fitted
-            [delattr(self, attr) for attr in ('coef_', 'intercept_', 'is_fitted_') if hasattr(self, attr)]
+            [delattr(self, attr) for attr in ("coef_", "intercept_", "is_fitted_") if hasattr(self, attr)]
         else:
             self._solve()
         return self
 
     def predict(self, X):
-        check_is_fitted(self, 'is_fitted_')
-        X = check_array(X, accept_sparse=True)
+        check_is_fitted(self, "is_fitted_")
+        X = validate_data(self, X, accept_sparse=True, reset=False)
         return safe_sparse_dot(X, self.coef_, dense_output=True) + self.intercept_

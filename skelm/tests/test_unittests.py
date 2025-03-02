@@ -2,14 +2,13 @@ import unittest
 from numpy.testing import assert_allclose
 import numpy as np
 from skelm import ELMClassifier, ELMRegressor
-from sklearn.datasets import load_iris, load_boston
+from sklearn.datasets import load_iris, load_diabetes
 
 
 class TestUnittests(unittest.TestCase):
-
     def setUp(self):
         self.data_class = load_iris(return_X_y=True)
-        self.data_reg = load_boston(return_X_y=True)
+        self.data_reg = load_diabetes(return_X_y=True)
 
     def test_Classifier_predict_ReturnsIntegerArray(self):
         X = np.array([[1], [2], [3]])
@@ -18,7 +17,7 @@ class TestUnittests(unittest.TestCase):
         elm.fit(X, Y)
         Yh = elm.predict(X)
         self.assertIsInstance(Yh, np.ndarray)
-        assert_allclose(Yh, Yh.astype(np.int))
+        assert_allclose(Yh, Yh.astype("int"))
 
     def test_Classifier_WrongNumberOfFeatures_RaisesError(self):
         X, T = self.data_class
@@ -98,17 +97,18 @@ class TestUnittests(unittest.TestCase):
 
     def test_MultipleHiddenLayers(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[2, 3], ufunc=['tanh', 'sigm'],
-                           density=[None, None], pairwise_metric=[None, None])
+        elm = ELMRegressor(n_neurons=[2, 3], ufunc=["tanh", "sigm"], density=[None, None], pairwise_metric=[None, None])
         elm.fit(X, Y)
         self.assertEqual(len(elm.SLFNs_), 2)
 
     def test_MultipleHiddenLayers_MoreCombinations(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[1, 1, 1, 1, 1],
-                           ufunc=['relu', 'sigm', np.sin, None, None],
-                           density=[None, 0.5, 0.8, None, None],
-                           pairwise_metric=[None, None, None, 'l1', 'chebyshev'])
+        elm = ELMRegressor(
+            n_neurons=[1, 1, 1, 1, 1],
+            ufunc=["relu", "sigm", np.sin, None, None],
+            density=[None, 0.5, 0.8, None, None],
+            pairwise_metric=[None, None, None, "l1", "chebyshev"],
+        )
         elm.fit(X, Y)
         self.assertEqual(len(elm.SLFNs_), 5)
 
@@ -119,7 +119,7 @@ class TestUnittests(unittest.TestCase):
 
     def test_MultipleHL_Ufunc_SingleValue(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[2, 3], ufunc='sigm')
+        elm = ELMRegressor(n_neurons=[2, 3], ufunc="sigm")
         elm.fit(X, Y)
 
     def test_MultipleHL_Density_SingleValue(self):
@@ -129,12 +129,12 @@ class TestUnittests(unittest.TestCase):
 
     def test_MultipleHL_Pairwise_SingleValue(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[2, 3], pairwise_metric='l2')
+        elm = ELMRegressor(n_neurons=[2, 3], pairwise_metric="l2")
         elm.fit(X, Y)
 
     def test_MultipleHL_WrongDimensions_Raises(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[1, 2, 3, 4], ufunc=['relu', 'sigm'])
+        elm = ELMRegressor(n_neurons=[1, 2, 3, 4], ufunc=["relu", "sigm"])
         with self.assertRaises(ValueError):
             elm.fit(X, Y)
 

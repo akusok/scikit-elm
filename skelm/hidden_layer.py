@@ -7,26 +7,23 @@ from numpy.typing import ArrayLike
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils import check_random_state
-from sklearn.utils.validation import check_array, check_is_fitted
+from sklearn.utils.validation import check_array, check_is_fitted, validate_data
 
 from sklearn.random_projection import GaussianRandomProjection, SparseRandomProjection
 from .utils import PairwiseRandomProjection
 
 # suppress annoying warning of random projection into a higher-dimensional space
 import warnings
+
 warnings.filterwarnings("ignore", message="DataDimensionalityWarning")
 
 
 def auto_neuron_count(n, d):
     # computes default number of neurons for `n` data samples with `d` features
-    return min(int(250 * np.log(1 + d/10) - 15), n//3 + 1)
+    return min(int(250 * np.log(1 + d / 10) - 15), n // 3 + 1)
 
 
-ufuncs = {"tanh": np.tanh,
-          "sigm": expit,
-          "relu": lambda x: np.maximum(x, 0),
-          "lin": lambda x: x,
-          None: lambda x: x}
+ufuncs = {"tanh": np.tanh, "sigm": expit, "relu": lambda x: np.maximum(x, 0), "lin": lambda x: x, None: lambda x: x}
 
 
 class SLFN(Protocol):
@@ -71,9 +68,7 @@ class RandomProjectionSLFN(SLFN):
     def __init__(self, X, n_neurons, ufunc=np.tanh, random_state=None):
         self.n_neurons = n_neurons
         self.ufunc = ufunc
-        self.projection = GaussianRandomProjection(
-            n_components=n_neurons, random_state=random_state
-        )
+        self.projection = GaussianRandomProjection(n_components=n_neurons, random_state=random_state)
         self.projection.fit(X)
 
     def transform(self, X):
@@ -105,7 +100,7 @@ class PairwiseRandomProjectionSLFN(SLFN):
         return self.projection.transform(X)
 
 
-class HiddenLayer(BaseEstimator, TransformerMixin):
+class HiddenLayer(TransformerMixin, BaseEstimator):
     """Scikit-Learn compatible interface for SLFN.
 
     Handles parameter transformation and input checks.
@@ -119,9 +114,14 @@ class HiddenLayer(BaseEstimator, TransformerMixin):
         self.pairwise_metric = pairwise_metric
         self.random_state = random_state
 
+    def __sklearn_tags__(self):
+        tags = super().__sklearn_tags__()
+        tags.input_tags.sparse = True
+        return tags
+
     def fit(self, X, y=None):
         # basic checks
-        X: ArrayLike = check_array(X, accept_sparse=True)
+        X: ArrayLike = validate_data(self, X, accept_sparse=True, reset=False)
         _ = y  # suppress warning for sklearn compatibility
 
         # handle random state
@@ -153,7 +153,7 @@ class HiddenLayer(BaseEstimator, TransformerMixin):
     def transform(self, X):
         check_is_fitted(self, "is_fitted_")
 
-        clean_X: ArrayLike = check_array(X, accept_sparse=True)
+        clean_X: ArrayLike = validate_data(self, X, accept_sparse=True, reset=False)
         if clean_X.shape[1] != self.n_features_in_:
             raise ValueError("X has %d features per sample; expecting %d" % (clean_X.shape[1], self.n_features_in_))
 
