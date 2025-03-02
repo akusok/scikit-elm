@@ -23,6 +23,7 @@ from .solver_batch import BatchCholeskySolver
 from .solver import Solver, BatchSolver
 
 from sklearn.exceptions import DataConversionWarning, DataDimensionalityWarning
+
 warnings.simplefilter("ignore", DataDimensionalityWarning)
 
 
@@ -32,6 +33,7 @@ class ELMProtocol(Protocol):
     Basic operation is to transform data using each SLFN, stack those features together,
     then compute weights/intercepts of an output linear model with a solver.
     """
+
     SLFNs: Iterable[SLFN]  # ELM has one or several types of hidden neurons
     solver: Solver  # ELM has an output layer solver
     is_fitted: False  # whether an ELM model is ready to predict
@@ -49,8 +51,8 @@ class ELMProtocol(Protocol):
 
 
 class BatchELMProtocol(ELMProtocol, Protocol):
-    """ELM that supports incremental solution.
-    """
+    """ELM that supports incremental solution."""
+
     solver: BatchSolver  # batch ELM needs a batch solver
 
     def partial_fit(self, X: ArrayLike, y: ArrayLike, solve: bool, forget: bool) -> BatchELMProtocol:
@@ -109,14 +111,20 @@ class BatchELM(BasicELM, BatchELMProtocol):
 
 
 class ScikitELM(RegressorMixin, BaseEstimator):
-    """Incremental ELM compatible with Scikit-Learn parametrization.
-    """
+    """Incremental ELM compatible with Scikit-Learn parametrization."""
 
-    def __init__(self, alpha=1e-7, batch_size=None, include_original_features=False,
-                 n_neurons=None, ufunc="tanh", density=None, pairwise_metric=None,
-                 random_state=None):
-        """Scikit-ELM's version of __init__, that only saves input parameters and does nothing else.
-        """
+    def __init__(
+        self,
+        alpha=1e-7,
+        batch_size=None,
+        include_original_features=False,
+        n_neurons=None,
+        ufunc="tanh",
+        density=None,
+        pairwise_metric=None,
+        random_state=None,
+    ):
+        """Scikit-ELM's version of __init__, that only saves input parameters and does nothing else."""
         self.alpha = alpha
         self.n_neurons = n_neurons
         self.batch_size = batch_size
@@ -128,7 +136,7 @@ class ScikitELM(RegressorMixin, BaseEstimator):
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
-        tags.input_tags.sparse=True
+        tags.input_tags.sparse = True
         return tags
 
     @property
@@ -164,9 +172,14 @@ class ScikitELM(RegressorMixin, BaseEstimator):
     def _make_slfns(self, X) -> Iterable[SLFN]:
         # only one type of neurons
         SLFNs = []
-        if not hasattr(self.n_neurons, '__iter__'):
-            slfn = HiddenLayer(n_neurons=self.n_neurons, density=self.density, ufunc=self.ufunc,
-                               pairwise_metric=self.pairwise_metric, random_state=self.random_state)
+        if not hasattr(self.n_neurons, "__iter__"):
+            slfn = HiddenLayer(
+                n_neurons=self.n_neurons,
+                density=self.density,
+                ufunc=self.ufunc,
+                pairwise_metric=self.pairwise_metric,
+                random_state=self.random_state,
+            )
             slfn.fit(X)
             SLFNs.append(slfn)
 
@@ -188,13 +201,20 @@ class ScikitELM(RegressorMixin, BaseEstimator):
                 pw_metrics = [pw_metrics] * k
 
             if not k == len(ufuncs) == len(densities) == len(pw_metrics):
-                raise ValueError("Inconsistent parameter lengths for model with {} different types of neurons.\n"
-                                 "Set 'ufunc', 'density' and 'pairwise_distances' by lists "
-                                 "with {} elements, or leave the default values.".format(k, k))
+                raise ValueError(
+                    "Inconsistent parameter lengths for model with {} different types of neurons.\n"
+                    "Set 'ufunc', 'density' and 'pairwise_distances' by lists "
+                    "with {} elements, or leave the default values.".format(k, k)
+                )
 
             for n_neurons, ufunc, density, metric in zip(self.n_neurons, ufuncs, densities, pw_metrics):
-                slfn = HiddenLayer(n_neurons=n_neurons, density=density, ufunc=ufunc,
-                                   pairwise_metric=metric, random_state=self.random_state)
+                slfn = HiddenLayer(
+                    n_neurons=n_neurons,
+                    density=density,
+                    ufunc=ufunc,
+                    pairwise_metric=metric,
+                    random_state=self.random_state,
+                )
                 slfn.fit(X)
                 SLFNs.append(slfn)
 
@@ -204,14 +224,13 @@ class ScikitELM(RegressorMixin, BaseEstimator):
         return SLFNs
 
     def _init_model(self, X):
-        """Create composition objects and ELM model.
-        """
+        """Create composition objects and ELM model."""
         SLFNs = self._make_slfns(X)
         solver = BatchCholeskySolver(self.alpha)
         self.model_ = BatchELM(SLFNs, solver)
 
     def _reset(self):
-        runtime_attributes = ('n_features_', 'model_', 'is_fitted_')
+        runtime_attributes = ("n_features_", "model_", "is_fitted_")
         [delattr(self, attr) for attr in runtime_attributes if hasattr(self, attr)]
 
     def predict(self, X) -> ArrayLike:
@@ -260,51 +279,51 @@ class ScikitELM(RegressorMixin, BaseEstimator):
     def partial_fit(self, X, y=None, forget=False, compute_output_weights=True) -> ScikitELM:
         """Update model with a new batch of data.
 
-                |method_partial_fit|
+        |method_partial_fit|
 
-                .. |method_partial_fit| replace:: Output weight computation can be temporary turned off
-                    for faster processing. This will mark model as not fit. Enable `compute_output_weights`
-                    in the final call to `partial_fit`.
+        .. |method_partial_fit| replace:: Output weight computation can be temporary turned off
+            for faster processing. This will mark model as not fit. Enable `compute_output_weights`
+            in the final call to `partial_fit`.
 
-                .. |param_forget| replace:: Performs a negative update, effectively removing the information
-                    given by training samples from the model. Output weights need to be re-computed after forgetting
-                    data. Forgetting data that have not been learned before leads to unpredictable results.
+        .. |param_forget| replace:: Performs a negative update, effectively removing the information
+            given by training samples from the model. Output weights need to be re-computed after forgetting
+            data. Forgetting data that have not been learned before leads to unpredictable results.
 
-                .. |param_compute_output_weights| replace::  Whether to compute new output weights
-                    (coef_, intercept_). Disable this in intermediate `partial_fit`
-                    steps to run computations faster, then enable in the last call to compute the new solution.
+        .. |param_compute_output_weights| replace::  Whether to compute new output weights
+            (coef_, intercept_). Disable this in intermediate `partial_fit`
+            steps to run computations faster, then enable in the last call to compute the new solution.
 
 
-                Parameters
-                ----------
-                X : {array-like, sparse matrix}, shape=[n_samples, n_features]
-                    Training input samples
+        Parameters
+        ----------
+        X : {array-like, sparse matrix}, shape=[n_samples, n_features]
+            Training input samples
 
-                y : array-like, shape=[n_samples, n_targets]
-                    Training targets
+        y : array-like, shape=[n_samples, n_targets]
+            Training targets
 
-                forget : boolean, default False
-                    |param_forget|
+        forget : boolean, default False
+            |param_forget|
 
-                compute_output_weights : boolean, optional, default True
-                    |param_compute_output_weights|
+        compute_output_weights : boolean, optional, default True
+            |param_compute_output_weights|
 
-                    .. Note::
-                        Solution can be updated without extra data by setting `X=None` and `y=None`.
+            .. Note::
+                Solution can be updated without extra data by setting `X=None` and `y=None`.
 
-                    Example:
-                        >>> model.partial_fit(X_1, y_1)
-                        ... model.partial_fit(X_2, y_2)
-                        ... model.partial_fit(X_3, y_3)    # doctest: +SKIP
+            Example:
+                >>> model.partial_fit(X_1, y_1)
+                ... model.partial_fit(X_2, y_2)
+                ... model.partial_fit(X_3, y_3)    # doctest: +SKIP
 
-                    Faster:
-                        >>> model.partial_fit(X_1, y_1, compute_output_weights=False)
-                        ... model.partial_fit(X_2, y_2, compute_output_weights=False)
-                        ... model.partial_fit(X_3, y_3)    # doctest: +SKIP
+            Faster:
+                >>> model.partial_fit(X_1, y_1, compute_output_weights=False)
+                ... model.partial_fit(X_2, y_2, compute_output_weights=False)
+                ... model.partial_fit(X_3, y_3)    # doctest: +SKIP
         """
 
         # run late init
-        if not hasattr(self, 'model_'):
+        if not hasattr(self, "model_"):
             self._init_model(X)
 
         # compute output weights only
@@ -316,13 +335,15 @@ class ScikitELM(RegressorMixin, BaseEstimator):
         X, y = validate_data(self, X, y, accept_sparse=True, multi_output=True)
         self.n_features_in_ = X.shape[1]
         if len(y.shape) > 1 and y.shape[1] == 1:
-            msg = ("A column-vector y was passed when a 1d array was expected. "
-                   "Please change the shape of y to (n_samples, ), for example using ravel().")
+            msg = (
+                "A column-vector y was passed when a 1d array was expected. "
+                "Please change the shape of y to (n_samples, ), for example using ravel()."
+            )
             warnings.warn(msg, DataConversionWarning)
 
         n_samples, n_features = X.shape
-        if hasattr(self, 'n_features_') and self.n_features_ != n_features:
-            raise ValueError('Shape of input is different from what was seen in `fit`')
+        if hasattr(self, "n_features_") and self.n_features_ != n_features:
+            raise ValueError("Shape of input is different from what was seen in `fit`")
 
         # set batch size, default is bsize=2000 or all-at-once with less than 10_000 samples
         self.bsize_ = self.batch_size
@@ -330,7 +351,7 @@ class ScikitELM(RegressorMixin, BaseEstimator):
             self.bsize_ = n_samples if n_samples < 10 * 1000 else 2000
 
         # init model if not fit yet
-        if not hasattr(self, 'model_'):
+        if not hasattr(self, "model_"):
             self.n_features_ = n_features
             self._init_model(X)
 
@@ -350,7 +371,7 @@ class ScikitELM(RegressorMixin, BaseEstimator):
             self.model_.compute_output_weights()
             self.is_fitted_ = True
         else:
-            if hasattr(self, 'is_fitted_'):
+            if hasattr(self, "is_fitted_"):
                 del self.is_fitted_
 
         return self
@@ -470,6 +491,7 @@ class ELMRegressor(ScikitELM):
     >>>  model = ELMRegressor(n_neurons=(30, 30),
     ...                       pairwise_metric=('cityblock', 'cosine'))   # doctest: +SKIP
     """
+
     pass
 
 
@@ -493,10 +515,21 @@ class ELMClassifier(ClassifierMixin, ScikitELM):
         The classes seen at :meth:`fit`.
     """
 
-    def __init__(self, classes=None, alpha=1e-7, batch_size=None, include_original_features=False, n_neurons=None,
-                 ufunc="tanh", density=None, pairwise_metric=None, random_state=None):
-        super().__init__(alpha, batch_size, include_original_features, n_neurons, ufunc, density, pairwise_metric,
-                         random_state)
+    def __init__(
+        self,
+        classes=None,
+        alpha=1e-7,
+        batch_size=None,
+        include_original_features=False,
+        n_neurons=None,
+        ufunc="tanh",
+        density=None,
+        pairwise_metric=None,
+        random_state=None,
+    ):
+        super().__init__(
+            alpha, batch_size, include_original_features, n_neurons, ufunc, density, pairwise_metric, random_state
+        )
         self.classes = classes
 
     @property
@@ -509,12 +542,12 @@ class ELMClassifier(ClassifierMixin, ScikitELM):
         tags.target_tags.multi_output = True
         tags.classifier_tags = ClassifierTags(multi_label=True)
         tags.input_tags.pairwise = False
-        tags.input_tags.sparse=True
+        tags.input_tags.sparse = True
         return tags
 
     def _reset(self):
-        if hasattr(self, 'label_binarizer_'):
-            delattr(self, 'label_binarizer_')
+        if hasattr(self, "label_binarizer_"):
+            delattr(self, "label_binarizer_")
         super()._reset()
 
     def _update_classes(self, y):
@@ -529,15 +562,17 @@ class ELMClassifier(ClassifierMixin, ScikitELM):
             return
 
         if len(old_classes) < 3:
-            raise ValueError("Dynamic class update has to start with at least 3 classes to function correctly; "
-                             "provide 3 or more 'classes=[...]' during initialization.")
+            raise ValueError(
+                "Dynamic class update has to start with at least 3 classes to function correctly; "
+                "provide 3 or more 'classes=[...]' during initialization."
+            )
 
         # get new classes sorted by LabelBinarizer
         self.label_binarizer_.fit(np.hstack((old_classes, partial_classes)))
         new_classes = self.label_binarizer_.classes_
 
         # convert existing XtY matrix to new classes
-        if hasattr(self.model_.solver, 'XtY_'):
+        if hasattr(self.model_.solver, "XtY_"):
             XtY_old = self.model_.solver.XtY_
             XtY_new = np.zeros((XtY_old.shape[0], new_classes.shape[0]))
             for i, c in enumerate(old_classes):
@@ -547,7 +582,7 @@ class ELMClassifier(ClassifierMixin, ScikitELM):
 
         # reset the solution
         self.model_.is_fitted = False
-        if hasattr(self, 'is_fitted_'):
+        if hasattr(self, "is_fitted_"):
             del self.is_fitted_
 
     def partial_fit(self, X, y=None, forget=False, update_classes=False, compute_output_weights=True) -> ELMClassifier:
@@ -573,13 +608,13 @@ class ELMClassifier(ClassifierMixin, ScikitELM):
             |param_compute_output_weights|
         """
 
-        #todo: Warning on strongly non-normalized data
+        # todo: Warning on strongly non-normalized data
 
         X, y = validate_data(self, X, y, accept_sparse=True, multi_output=True)
         self.n_features_in_ = X.shape[1]
 
         # init label binarizer if needed
-        if not hasattr(self, 'label_binarizer_'):
+        if not hasattr(self, "label_binarizer_"):
             self.label_binarizer_ = LabelBinarizer()
             if type_of_target(y).endswith("-multioutput"):
                 self.label_binarizer_ = MultiLabelBinarizer()

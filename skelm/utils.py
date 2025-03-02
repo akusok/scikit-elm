@@ -6,8 +6,8 @@ from sklearn.utils.validation import check_array, check_is_fitted, check_random_
 
 
 class HiddenLayerType(Enum):
-    RANDOM = 1    # Gaussian random projection
-    SPARSE = 2    # Sparse Random Projection
+    RANDOM = 1  # Gaussian random projection
+    SPARSE = 2  # Sparse Random Projection
     PAIRWISE = 3  # Pairwise kernel with a number of centroids
 
 
@@ -19,7 +19,7 @@ def flatten(items):
     """Yield items from any nested iterable."""
     for x in items:
         # don't break strings into characters
-        if hasattr(x, '__iter__') and not isinstance(x, (str, bytes)):
+        if hasattr(x, "__iter__") and not isinstance(x, (str, bytes)):
             yield from flatten(x)
         else:
             yield x
@@ -38,7 +38,7 @@ def _dense(X):
 
 class PairwiseRandomProjection(BaseEstimator, TransformerMixin):
 
-    def __init__(self, n_components=100, pairwise_metric='l2', n_jobs=None, random_state=None):
+    def __init__(self, n_components=100, pairwise_metric="l2", n_jobs=None, random_state=None):
         """Pairwise distances projection with random centroids.
 
         Parameters
@@ -96,17 +96,20 @@ class PairwiseRandomProjection(BaseEstimator, TransformerMixin):
             Distance matrix between input data samples and centroids.
         """
         X = check_array(X, accept_sparse=True)
-        check_is_fitted(self, 'components_')
+        check_is_fitted(self, "components_")
 
         if X.shape[1] != self.components_.shape[1]:
             raise ValueError(
-                'Impossible to perform projection: X at fit stage had a different number of features. '
-                '(%s != %s)' % (X.shape[1], self.components_.shape[1]))
+                "Impossible to perform projection: X at fit stage had a different number of features. "
+                "(%s != %s)" % (X.shape[1], self.components_.shape[1])
+            )
 
         try:
             X_dist = pairwise_distances(X, self.components_, n_jobs=self.n_jobs_, metric=self.pairwise_metric)
         except TypeError:
             # scipy distances that don't support sparse matrices
-            X_dist = pairwise_distances(_dense(X), _dense(self.components_), n_jobs=self.n_jobs_, metric=self.pairwise_metric)
+            X_dist = pairwise_distances(
+                _dense(X), _dense(self.components_), n_jobs=self.n_jobs_, metric=self.pairwise_metric
+            )
 
         return X_dist

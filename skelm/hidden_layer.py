@@ -14,19 +14,16 @@ from .utils import PairwiseRandomProjection
 
 # suppress annoying warning of random projection into a higher-dimensional space
 import warnings
+
 warnings.filterwarnings("ignore", message="DataDimensionalityWarning")
 
 
 def auto_neuron_count(n, d):
     # computes default number of neurons for `n` data samples with `d` features
-    return min(int(250 * np.log(1 + d/10) - 15), n//3 + 1)
+    return min(int(250 * np.log(1 + d / 10) - 15), n // 3 + 1)
 
 
-ufuncs = {"tanh": np.tanh,
-          "sigm": expit,
-          "relu": lambda x: np.maximum(x, 0),
-          "lin": lambda x: x,
-          None: lambda x: x}
+ufuncs = {"tanh": np.tanh, "sigm": expit, "relu": lambda x: np.maximum(x, 0), "lin": lambda x: x, None: lambda x: x}
 
 
 class SLFN(Protocol):
@@ -71,9 +68,7 @@ class RandomProjectionSLFN(SLFN):
     def __init__(self, X, n_neurons, ufunc=np.tanh, random_state=None):
         self.n_neurons = n_neurons
         self.ufunc = ufunc
-        self.projection = GaussianRandomProjection(
-            n_components=n_neurons, random_state=random_state
-        )
+        self.projection = GaussianRandomProjection(n_components=n_neurons, random_state=random_state)
         self.projection.fit(X)
 
     def transform(self, X):
@@ -121,7 +116,7 @@ class HiddenLayer(TransformerMixin, BaseEstimator):
 
     def __sklearn_tags__(self):
         tags = super().__sklearn_tags__()
-        tags.input_tags.sparse=True
+        tags.input_tags.sparse = True
         return tags
 
     def fit(self, X, y=None):

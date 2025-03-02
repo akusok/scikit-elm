@@ -14,7 +14,7 @@ from skelm.hidden_layer import (
     SparseRandomProjectionSLFN,
     PairwiseRandomProjectionSLFN,
     CopyInputsSLFN,
-    HiddenLayer
+    HiddenLayer,
 )
 
 
@@ -32,7 +32,7 @@ data_formats = (
     (coo_matrix(r_X), r_y),
     (coo_matrix(c_X), c_y),
     (lil_matrix(r_X), r_y),
-    (lil_matrix(c_X), c_y)
+    (lil_matrix(c_X), c_y),
 )
 
 
@@ -71,9 +71,9 @@ class TestNativeSLFNs(unittest.TestCase):
                 self.assertLess(np.abs(H_copy - X).max(), 1e-5, msg="Arrays are not equal")
 
 
-
 ###########################
 ## Scikit-Learn's wrapper
+
 
 class TestScikitLearnCompatibleInterface(unittest.TestCase):
 
@@ -116,8 +116,7 @@ class TestScikitLearnCompatibleInterface(unittest.TestCase):
                 self.assertIsInstance(model.SLFN_, PairwiseRandomProjectionSLFN)
 
     def test_PairwiseKernel_TooManyNeurons_StillWorks(self):
-        """More neurons than original data features available; model still works.
-        """
+        """More neurons than original data features available; model still works."""
         for X, y in data_formats:
             with self.subTest(matrix_type=type(X)):
                 model = HiddenLayer(n_neurons=3 * X.shape[0], pairwise_metric="cosine")
@@ -137,6 +136,7 @@ class TestScikitLearnCompatibleInterface(unittest.TestCase):
     def test_Ufunc_CustomCreatedUfunc_Works(self):
         def foo(x):
             return x + 1
+
         my_ufunc = np.frompyfunc(foo, 1, 1)
         for X, y in data_formats:
             with self.subTest(matrix_type=type(X)):
@@ -157,10 +157,24 @@ class TestScikitLearnCompatibleInterface(unittest.TestCase):
                 model.fit(r_X)
 
     def test_PairwiseDistances_AllKinds_FromScipy(self):
-        for pm in ["braycurtis", "canberra", "chebyshev", "correlation", "dice", "hamming",
-                   "jaccard", "kulsinski", "mahalanobis", "minkowski", "rogerstanimoto",
-                   "russellrao", "seuclidean", "sokalmichener", "sokalsneath", "sqeuclidean"]:
+        for pm in [
+            "braycurtis",
+            "canberra",
+            "chebyshev",
+            "correlation",
+            "dice",
+            "hamming",
+            "jaccard",
+            "kulsinski",
+            "mahalanobis",
+            "minkowski",
+            "rogerstanimoto",
+            "russellrao",
+            "seuclidean",
+            "sokalmichener",
+            "sokalsneath",
+            "sqeuclidean",
+        ]:
             with self.subTest(pairwise_metric=pm):
                 model = HiddenLayer(5, pairwise_metric=pm)
                 model.fit(r_X)
-

@@ -35,8 +35,10 @@ class LanczosSolver(Solver):
         # Lanczos solver works only with vector 'y'
         if len(y.shape) == 2:
             if y.shape[1] != 1:
-                raise ValueError("Lanczos solver accepts only vector 'y'. "
-                                 "Use separate model for each output in multi-output problem.")
+                raise ValueError(
+                    "Lanczos solver accepts only vector 'y'. "
+                    "Use separate model for each output in multi-output problem."
+                )
             else:
                 y = y.ravel()
 
@@ -64,8 +66,8 @@ class LanczosSolver(Solver):
             b[j + 1] = np.linalg.norm(r[j])
 
             if j > 2:
-                Z = np.diag(a[1:j + 1]) + np.diag(b[2:j + 1], -1) + np.diag(b[2:j + 1], 1)
-                Q = np.vstack(q[1:j + 1]).T
+                Z = np.diag(a[1 : j + 1]) + np.diag(b[2 : j + 1], -1) + np.diag(b[2 : j + 1], 1)
+                Q = np.vstack(q[1 : j + 1]).T
                 B = Q @ np.linalg.pinv(Z) @ e1[:j] * b[1]
 
                 if X_val is None:  # early stopping disabled

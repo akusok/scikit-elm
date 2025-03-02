@@ -14,9 +14,11 @@ dask = pytest.importorskip("dask")
 def data_class():
     return load_iris(return_X_y=True)
 
+
 @pytest.fixture
 def data_ml():
     return make_multilabel_classification()
+
 
 @pytest.fixture
 def data_reg():

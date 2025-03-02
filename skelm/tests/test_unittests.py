@@ -98,17 +98,18 @@ class TestUnittests(unittest.TestCase):
 
     def test_MultipleHiddenLayers(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[2, 3], ufunc=['tanh', 'sigm'],
-                           density=[None, None], pairwise_metric=[None, None])
+        elm = ELMRegressor(n_neurons=[2, 3], ufunc=["tanh", "sigm"], density=[None, None], pairwise_metric=[None, None])
         elm.fit(X, Y)
         self.assertEqual(len(elm.SLFNs_), 2)
 
     def test_MultipleHiddenLayers_MoreCombinations(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[1, 1, 1, 1, 1],
-                           ufunc=['relu', 'sigm', np.sin, None, None],
-                           density=[None, 0.5, 0.8, None, None],
-                           pairwise_metric=[None, None, None, 'l1', 'chebyshev'])
+        elm = ELMRegressor(
+            n_neurons=[1, 1, 1, 1, 1],
+            ufunc=["relu", "sigm", np.sin, None, None],
+            density=[None, 0.5, 0.8, None, None],
+            pairwise_metric=[None, None, None, "l1", "chebyshev"],
+        )
         elm.fit(X, Y)
         self.assertEqual(len(elm.SLFNs_), 5)
 
@@ -119,7 +120,7 @@ class TestUnittests(unittest.TestCase):
 
     def test_MultipleHL_Ufunc_SingleValue(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[2, 3], ufunc='sigm')
+        elm = ELMRegressor(n_neurons=[2, 3], ufunc="sigm")
         elm.fit(X, Y)
 
     def test_MultipleHL_Density_SingleValue(self):
@@ -129,12 +130,12 @@ class TestUnittests(unittest.TestCase):
 
     def test_MultipleHL_Pairwise_SingleValue(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[2, 3], pairwise_metric='l2')
+        elm = ELMRegressor(n_neurons=[2, 3], pairwise_metric="l2")
         elm.fit(X, Y)
 
     def test_MultipleHL_WrongDimensions_Raises(self):
         X, Y = self.data_reg
-        elm = ELMRegressor(n_neurons=[1, 2, 3, 4], ufunc=['relu', 'sigm'])
+        elm = ELMRegressor(n_neurons=[1, 2, 3, 4], ufunc=["relu", "sigm"])
         with self.assertRaises(ValueError):
             elm.fit(X, Y)
 

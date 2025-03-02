@@ -27,6 +27,7 @@ def _read_numeric_file(fname):
     except:
         pass
 
+
 class LargeELMRegressor(BasicELM, RegressorMixin):
     """ELM Regressor for larger-than-memory problems.
 
@@ -87,17 +88,14 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
         .. todo:: Exact batch_size vs. GPU performance
     """
 
-
     def __del__(self):
-        if hasattr(self, 'client_'):
+        if hasattr(self, "client_"):
             self.client_.close()
             self.cluster_.close()
 
     def _setup_dask_client(self):
         self.cluster_ = LocalCluster(
-            n_workers=4, threads_per_worker=1,
-            local_dir="/Users/akusok/wrkdir/dask-temp",
-            memory_limit="8GB"
+            n_workers=4, threads_per_worker=1, local_dir="/Users/akusok/wrkdir/dask-temp", memory_limit="8GB"
         )
         self.client_ = Client(self.cluster_)
 
@@ -107,22 +105,23 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
 
         def foo():
             import os
-            os.environ['OMP_NUM_THREADS'] = '1'
+
+            os.environ["OMP_NUM_THREADS"] = "1"
+
         self.client_.run(foo)
 
         print("Running on:", self.client_)
 
         try:
-            dashboard = self.client_.scheduler_info()['address'].split(":")
+            dashboard = self.client_.scheduler_info()["address"].split(":")
             dashboard[0] = "http"
-            dashboard[-1] = str(self.client_.scheduler_info()['services']['dashboard'])
+            dashboard[-1] = str(self.client_.scheduler_info()["services"]["dashboard"])
             print("Dashboard at", ":".join(dashboard))
         except:
             pass
 
     def _project(self, X_dask):
-        """Compute hidden layer output with Dask functionality.
-        """
+        """Compute hidden layer output with Dask functionality."""
         H_list = []
         for hl, W in zip(self.hidden_layers_, self.W_):
             if hl.hidden_layer_ == HiddenLayerType.PAIRWISE:
@@ -131,7 +130,7 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
                     W,
                     dtype=X_dask.dtype,
                     chunks=(X_dask.chunks[0], (W.shape[0],)),
-                    metric=hl.pairwise_metric
+                    metric=hl.pairwise_metric,
                 )
             else:
                 XW_dask = da.dot(X_dask, W.transpose())
@@ -182,8 +181,7 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
         return HH, HY
 
     def _solve(self, HH, HY):
-        """Compute output weights from HH and HY using Dask functionality.
-        """
+        """Compute output weights from HH and HY using Dask functionality."""
         # make HH/HY divisible by chunk size
         n_features, _ = HH.shape
         padding = 0
@@ -193,12 +191,10 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
             P01 = da.zeros((n_features, padding))
             P10 = da.zeros((padding, n_features))
             P11 = da.zeros((padding, padding))
-            HH = da.block([[HH,  P01],
-                           [P10, P11]])
+            HH = da.block([[HH, P01], [P10, P11]])
 
             P1 = da.zeros((padding, HY.shape[1]))
-            HY = da.block([[HY],
-                           [P1]])
+            HY = da.block([[HY], [P1]])
 
         # rechunk, add bias, and solve
         HH = HH.rechunk(self.bsize_) + self.alpha * da.eye(HH.shape[1], chunks=self.bsize_)
@@ -252,20 +248,22 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
             raise ValueError("Expected X and y as lists of file names.")
 
         if len(X) != len(y):
-            raise ValueError("Expected X and y as lists of files with the same length. "
-                             "Got len(X)={} and len(y)={}".format(len(X), len(y)))
+            raise ValueError(
+                "Expected X and y as lists of files with the same length. "
+                "Got len(X)={} and len(y)={}".format(len(X), len(y))
+            )
 
         # read first file and get parameters
         X_dask = dd.read_parquet(X[0]).to_dask_array(lengths=True)
         Y_dask = dd.read_parquet(y[0]).to_dask_array(lengths=True)
 
         n_samples, n_features = X_dask.shape
-        if hasattr(self, 'n_features_') and self.n_features_ != n_features:
-            raise ValueError('Shape of input is different from what was seen in `fit`')
+        if hasattr(self, "n_features_") and self.n_features_ != n_features:
+            raise ValueError("Shape of input is different from what was seen in `fit`")
 
         _, n_outputs = Y_dask.shape
-        if hasattr(self, 'n_outputs_') and self.n_outputs_ != n_outputs:
-            raise ValueError('Shape of outputs is different from what was seen in `fit`')
+        if hasattr(self, "n_outputs_") and self.n_outputs_ != n_outputs:
+            raise ValueError("Shape of outputs is different from what was seen in `fit`")
 
         # set batch size, default is bsize=2000 or all-at-once with less than 10_000 samples
         self.bsize_ = self.batch_size
@@ -273,7 +271,7 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
             self.bsize_ = n_samples if n_samples < 10 * 1000 else 2000
 
         # init model if not fit yet
-        if not hasattr(self, 'hidden_layers_'):
+        if not hasattr(self, "hidden_layers_"):
             self.n_features_ = n_features
             self.n_outputs_ = n_outputs
 
@@ -305,7 +303,7 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
                 Danger of running out out memory for high-dimensional outputs, if a large set of input
                 files is provided. Feed data in smaller batches in such case.
         """
-        check_is_fitted(self, 'is_fitted_')
+        check_is_fitted(self, "is_fitted_")
 
         if _is_list_of_strings(X):
             Yh_list = []

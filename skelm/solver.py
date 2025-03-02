@@ -9,6 +9,7 @@ from sklearn.utils.extmath import safe_sparse_dot
 from sklearn.utils.validation import validate_data
 
 from scipy.linalg import LinAlgWarning
+
 warnings.simplefilter("ignore", LinAlgWarning)
 
 
@@ -105,16 +106,14 @@ class CholeskySolver:
         self.intercept_ = None
 
     def _reset_model(self):
-        """Clean temporary data storage.
-        """
+        """Clean temporary data storage."""
         self.XtX = None
         self.XtY = None
         self.coef_ = None
         self.intercept_ = None
 
     def _init_model(self, X, y):
-        """Initialize model storage.
-        """
+        """Initialize model storage."""
         d_in = X.shape[1]
         self.XtX = np.eye(d_in + 1) * self.alpha
         self.XtX[0, 0] = 0
@@ -135,8 +134,7 @@ class CholeskySolver:
             raise ValueError("X and y have different number of samples.")
 
     def _update_model(self, X, y, forget=False):
-        """Update model with new data; or remove already trained data from model.
-        """
+        """Update model with new data; or remove already trained data from model."""
         X_sum = safe_sparse_dot(X.T, np.ones((X.shape[0],)))
         y_sum = safe_sparse_dot(y.T, np.ones((y.shape[0],)))
 
@@ -169,7 +167,7 @@ class CholeskySolver:
         if self.XtX is None:
             raise RuntimeError("Attempting to solve uninitialized model")
 
-        B = sp.linalg.solve(self.XtX, self.XtY, assume_a='sym', overwrite_a=False, overwrite_b=False)
+        B = sp.linalg.solve(self.XtX, self.XtY, assume_a="sym", overwrite_a=False, overwrite_b=False)
         self.coef_ = B[1:]
         self.intercept_ = B[0]
 
