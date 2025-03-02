@@ -10,7 +10,6 @@ from skelm.solver_lanczos import LanczosSolver
 
 
 class TestLanczosSolver(unittest.TestCase):
-
     def test_SolveNoBias_Works(self):
         X = np.random.randn(100, 3)
         Y = X @ np.array([1, 2, 3])
@@ -36,7 +35,6 @@ class TestLanczosSolver(unittest.TestCase):
         assert_allclose(solver.coef_[:1], -2)
 
     def test_IncrementalSoluiton_MoreIterationsDecreaseError(self):
-
         def stop_two_iter(e):
             return len(e) >= 2
 
@@ -91,7 +89,6 @@ class TestLanczosSolver(unittest.TestCase):
 
 
 class TestCholeskySolver(unittest.TestCase):
-
     # def test_CholeskySolverSklearn_IsScikitLearnEstimator(self):
     #     solver = BatchCholeskySolver()
     #     check_estimator(solver)

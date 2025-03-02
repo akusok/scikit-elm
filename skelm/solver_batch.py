@@ -17,7 +17,6 @@ warnings.simplefilter("ignore", LinAlgWarning)
 
 
 class BatchCholeskySolver(BaseEstimator, RegressorMixin):
-
     def __init__(self, alpha: float = 1e-7):
         self.alpha = alpha
 

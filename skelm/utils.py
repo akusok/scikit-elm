@@ -37,7 +37,6 @@ def _dense(X):
 
 
 class PairwiseRandomProjection(BaseEstimator, TransformerMixin):
-
     def __init__(self, n_components=100, pairwise_metric="l2", n_jobs=None, random_state=None):
         """Pairwise distances projection with random centroids.
 

@@ -4,7 +4,6 @@ from skelm import ELMClassifier, ELMRegressor
 
 
 class TestData(unittest.TestCase):
-
     def setUp(self) -> None:
         self.data_class = load_iris(return_X_y=True)
         self.data_reg = load_diabetes(return_X_y=True)

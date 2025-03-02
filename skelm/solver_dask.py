@@ -55,7 +55,6 @@ class DaskCholeskySolver(BaseEstimator, RegressorMixin):
         print(self.client_)
 
     def fit(self, X, y):
-
         self.W_ = da.random.normal
 
         return self
@@ -65,7 +64,6 @@ class DaskCholeskySolver(BaseEstimator, RegressorMixin):
 
 
 class BBvdsnjvlsdnjhbgfndjvksdjkvlndsf(BaseEstimator, RegressorMixin):
-
     def __init__(self, alpha=1e-7):
         self.alpha = alpha
 

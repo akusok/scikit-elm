@@ -76,7 +76,6 @@ class TestNativeSLFNs(unittest.TestCase):
 
 
 class TestScikitLearnCompatibleInterface(unittest.TestCase):
-
     def test_HiddenLayer_IsScikitLearnEstimator(self):
         model_rp = HiddenLayer(5)
         model_srp = HiddenLayer(5, density=0.5)

@@ -74,7 +74,6 @@ class BatchRidgeSolver:
         self.coef_ = np.linalg.lstsq(self.XX, self.Xy, rcond=-1)[0]
 
     def partial_fit(self, X, y, compute_output_weights=True, forget=False):
-
         self.coef = None  # invalidate old solution
         XX_delta = X.T @ X
         Xy_delta = X.T @ y
@@ -97,7 +96,6 @@ class BatchRidgeSolver:
 
 
 class CholeskySolver:
-
     def __init__(self, alpha=1e-7):
         self.alpha: float = alpha
         self.XtX = None

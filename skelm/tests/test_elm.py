@@ -13,7 +13,6 @@ from skelm.elm_lanczos import LanczosELM
 
 
 class TestScikitELM(unittest.TestCase):
-
     def setUp(self) -> None:
         self.X, y = load_diabetes(return_X_y=True)
         self.y = y[:, None]
@@ -40,7 +39,6 @@ class TestScikitELM(unittest.TestCase):
 
 
 class TestBasicELM(unittest.TestCase):
-
     def setUp(self) -> None:
         self.X, y = load_diabetes(return_X_y=True)
         self.y = y[:, None]
@@ -74,7 +72,6 @@ class TestBasicELM(unittest.TestCase):
 
 
 class TestLanczosELM(unittest.TestCase):
-
     def setUp(self) -> None:
         self.X, y = load_diabetes(return_X_y=True)
         self.y = y[:, None]

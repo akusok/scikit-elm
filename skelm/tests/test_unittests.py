@@ -6,7 +6,6 @@ from sklearn.datasets import load_iris, load_diabetes
 
 
 class TestUnittests(unittest.TestCase):
-
     def setUp(self):
         self.data_class = load_iris(return_X_y=True)
         self.data_reg = load_diabetes(return_X_y=True)

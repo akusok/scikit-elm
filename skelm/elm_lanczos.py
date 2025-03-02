@@ -8,7 +8,6 @@ from .solver_lanczos import LanczosSolver, worst_of_five
 
 
 class LanczosELM(RegressorMixin, BaseEstimator):
-
     def __init__(
         self,
         include_original_features=False,

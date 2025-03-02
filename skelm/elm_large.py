@@ -249,8 +249,9 @@ class LargeELMRegressor(BasicELM, RegressorMixin):
 
         if len(X) != len(y):
             raise ValueError(
-                "Expected X and y as lists of files with the same length. "
-                "Got len(X)={} and len(y)={}".format(len(X), len(y))
+                "Expected X and y as lists of files with the same length. Got len(X)={} and len(y)={}".format(
+                    len(X), len(y)
+                )
             )
 
         # read first file and get parameters

@@ -9,7 +9,6 @@ from sklearn.exceptions import DataDimensionalityWarning, DataConversionWarning
 
 
 class TestAcceptance(unittest.TestCase):
-
     def setUp(self) -> None:
         self.data_class = load_iris(return_X_y=True)
         self.data_ml = make_multilabel_classification()

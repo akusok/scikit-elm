@@ -5,7 +5,6 @@ from skelm import ELMClassifier, ELMRegressor
 
 
 class TestFeatures(unittest.TestCase):
-
     def setUp(self) -> None:
         self.params = [(load_iris(return_X_y=True), ELMClassifier), (load_diabetes(return_X_y=True), ELMRegressor)]
 

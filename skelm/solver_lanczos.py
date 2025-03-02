@@ -13,7 +13,6 @@ def worst_of_five(errors: List[float]) -> bool:
 
 
 class LanczosSolver(Solver):
-
     coef_ = None
     intercept_ = np.zeros((1,))
     X_val: Optional[ArrayLike] = None
