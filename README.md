@@ -13,3 +13,8 @@ optimization and parameter selection without full re-training.
 
 Big Data and out-of-core learning support through a dask-powered backend.
 GPU acceleration support with NVidia hardware, and on macOS through plaidml.
+
+
+## Testing
+
+`uv run pytest skelm`
